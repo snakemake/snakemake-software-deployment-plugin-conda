@@ -1,0 +1,2 @@
+This plugin provides conda package management integration for Snakemake.
+It uses the ultra-fast and robust rattler library (via py-rattler) for environment solving, deployment, and activation of environments.

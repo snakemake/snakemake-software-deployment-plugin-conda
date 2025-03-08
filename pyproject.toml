@@ -1,0 +1,32 @@
+[project]
+name = "snakemake-software-deployment-plugin-conda"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "snakemake-interface-common (>=1.17.4,<2.0.0)",
+    "snakemake-interface-software-deployment-plugins (>=0.6.0,<1.0)",
+    "py-rattler (>=0.10.0,<0.11.0)",
+    "pyyaml (>=6.0.2,<7.0.0)",
+]
+repository = "https://github.com/your/plugin"
+documentation = "https://snakemake.github.io/snakemake-plugin-catalog/plugins/software-deployment/conda.html"
+[[project.authors]]
+name = "Johannes Koester"
+email = "johannes.koester@uni-due.de"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+[[tool.poetry.packages]]
+include = "snakemake_software_deployment_plugin_conda"
+from = "src"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.9.9"
+coverage = "^7.6.12"
+pytest = "^8.3.5"
