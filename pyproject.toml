@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11,<4.0"
 dependencies = [
     "snakemake-interface-common (>=1.17.4,<2.0.0)",
-    "snakemake-interface-software-deployment-plugins (>=0.6.0,<1.0)",
+    "snakemake-interface-software-deployment-plugins (>=0.6.1,<1.0)",
     "py-rattler (>=0.10.0,<0.11.0)",
     "pyyaml (>=6.0.2,<7.0.0)",
 ]
