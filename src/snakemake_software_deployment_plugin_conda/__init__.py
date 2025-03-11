@@ -1,3 +1,4 @@
+from itertools import chain
 import json
 import os
 import shutil
@@ -5,12 +6,14 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
+import subprocess as sp
 
 import yaml
 
 from snakemake_interface_common.exceptions import WorkflowError
 from snakemake_interface_software_deployment_plugins.settings import (
     SoftwareDeploymentSettingsBase,
+    CommonSettings,
 )
 from snakemake_interface_software_deployment_plugins import (
     EnvBase,
@@ -50,6 +53,11 @@ class SoftwareDeploymentSettings(SoftwareDeploymentSettingsBase):
             "required": False,
         },
     )
+
+
+common_settings = CommonSettings(
+    provides="conda",
+)
 
 
 @dataclass
@@ -178,12 +186,28 @@ class Env(EnvBase, DeployableEnvBase):
                     version=entry.version,
                 )
 
-            with open(self.spec.envfile.cached, "r") as f:
-                env_spec = yaml.load(f, Loader=yaml.SafeLoader)
-                return list(map(entry_to_report, env_spec["dependencies"]))
+            return list(map(entry_to_report, chain(self.conda_specs, self.pypi_specs)))
         else:
             # TODD dynamically obtain software list from the deployed environment
             return ()
+
+    @property
+    def conda_specs(self) -> List[str]:
+        return [
+            spec
+            for spec in self.envfile_content["dependencies"]
+            if not isinstance(spec, dict)
+        ]
+
+    @property
+    def pypi_specs(self) -> List[str]:
+        for spec in self.envfile_content["dependencies"]:
+            if isinstance(spec, dict):
+                pypi_specs = spec["pip"]
+                if not isinstance(pypi_specs, list):
+                    raise WorkflowError("pypi/pip dependencies must be a list")
+                return spec["pip"]
+        return []
 
     async def _package_records(self) -> List[RepoDataRecord]:
         if self.spec.pinfile.cached.exists():
@@ -201,7 +225,7 @@ class Env(EnvBase, DeployableEnvBase):
                 await solve(
                     channels=self.envfile_content["channels"],
                     # The specs to solve for
-                    specs=self.envfile_content["dependencies"],
+                    specs=self.conda_specs,
                     # Virtual packages define the specifications of the environment
                     virtual_packages=VirtualPackage.detect(),
                 )
@@ -223,6 +247,21 @@ class Env(EnvBase, DeployableEnvBase):
             target_prefix=self.deployment_path,
             cache_dir=self.settings.cache_dir,
         )
+
+        pypi_specs = self.pypi_specs
+        if pypi_specs:
+            try:
+                sp.run(
+                    self.decorate_shellcmd(
+                        f"uv pip install --venv {self.deployment_path} "
+                        f"{' '.join(pypi_specs)}",
+                    ),
+                    check=True,
+                    stdout=sp.PIPE,
+                    stderr=sp.PIPE,
+                )
+            except sp.CalledProcessError as e:
+                raise WorkflowError("Failed to install pypi packages", e)
 
     def is_deployment_path_portable(self) -> bool:
         # Deployment isn't portable because RPATHs are hardcoded as absolute paths by

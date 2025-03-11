@@ -58,3 +58,10 @@ class TestSoftwareDeployment(TestSoftwareDeploymentBase):
 #         return EnvSpec(
 #             envfile=EnvSpecSourceFile(Path(__file__).parent / "test_env_pinned.yaml")
 #         )
+
+
+class TestSoftwareDeploymentPypi(TestSoftwareDeployment):
+    def get_env_spec(self) -> EnvSpecBase:
+        return EnvSpec(
+            envfile=EnvSpecSourceFile(Path(__file__).parent / "test_env_pypi.yaml")
+        )

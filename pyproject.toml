@@ -9,6 +9,7 @@ dependencies = [
     "snakemake-interface-software-deployment-plugins (>=0.6.1,<1.0)",
     "py-rattler (>=0.10.0,<0.11.0)",
     "pyyaml (>=6.0.2,<7.0.0)",
+    "uv (>=0.6.5,<0.7.0)",
 ]
 repository = "https://github.com/your/plugin"
 documentation = "https://snakemake.github.io/snakemake-plugin-catalog/plugins/software-deployment/conda.html"

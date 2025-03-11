@@ -1,0 +1,7 @@
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - stress-ng =0.17
+  - pip:
+    - humanfriendly =10
