@@ -252,10 +252,14 @@ class Env(EnvBase, DeployableEnvBase):
         if pypi_specs:
             try:
                 sp.run(
-                    self.decorate_shellcmd(
-                        f"uv pip install --venv {self.deployment_path} "
-                        f"{' '.join(pypi_specs)}",
-                    ),
+                    [
+                        "uv",
+                        "pip",
+                        "install",
+                        "--venv",
+                        self.deployment_path,
+                        " ".join(pypi_specs),
+                    ],
                     check=True,
                     stdout=sp.PIPE,
                     stderr=sp.PIPE,
