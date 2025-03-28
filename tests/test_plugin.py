@@ -65,3 +65,8 @@ class TestSoftwareDeploymentPypi(TestSoftwareDeployment):
         return EnvSpec(
             envfile=EnvSpecSourceFile(Path(__file__).parent / "test_env_pypi.yaml")
         )
+
+    def get_test_cmd(self) -> str:
+        # Return a test command that should be executed within the environment
+        # with exit code 0 (i.e. without error).
+        return "which python; python -c 'import humanfriendly'"

@@ -1,6 +1,7 @@
 from itertools import chain
 import json
 import os
+import re
 import shutil
 import sys
 from dataclasses import dataclass, field
@@ -28,6 +29,9 @@ from rattler.match_spec import MatchSpec
 from rattler import solve, install, VirtualPackage
 from rattler.platform import Platform
 from rattler.repo_data import RepoDataRecord
+
+
+PVTHON_VERSION_RE = re.compile(r"Python (?P<ver>\d+\.\d+\.\d+)")
 
 
 # Optional:
@@ -92,6 +96,14 @@ class EnvSpec(EnvSpecBase):
         # attributes that represent paths
         yield "envfile"
         yield "pinfile"
+
+    def __str__(self) -> str:
+        if self.envfile is not None:
+            return str(self.envfile.path_or_uri)
+        elif self.directory is not None:
+            return str(self.directory)
+        else:
+            return self.name
 
 
 class Env(EnvBase, DeployableEnvBase):
@@ -248,24 +260,71 @@ class Env(EnvBase, DeployableEnvBase):
             cache_dir=self.settings.cache_dir,
         )
 
-        pypi_specs = self.pypi_specs
+        pypi_specs = [spec.replace(" ", "") for spec in self.pypi_specs]
         if pypi_specs:
+
+            def raise_python_error(errmsg: str):
+                raise WorkflowError(
+                    f"No working python found in the given environment {self.spec}. "
+                    "Unable to install additional pypi packages. Please add python as "
+                    f"a conda package to the environment. {errmsg}"
+                )
+
+            try:
+                python_path = (
+                    sp.run(
+                        self.decorate_shellcmd("which python"),
+                        stdout=sp.PIPE,
+                        stderr=sp.PIPE,
+                        shell=True,
+                        check=True,
+                    )
+                    .stdout.decode()
+                    .strip()
+                )
+            except sp.CalledProcessError as e:
+                raise_python_error(f"Error: {e.stderr}")
+            if self.deployment_path not in Path(python_path).parents:
+                raise_python_error(f"No python found under {self.deployment_path}.")
+
+            try:
+                ver_str = (
+                    sp.run(
+                        self.decorate_shellcmd("python --version"),
+                        stdout=sp.PIPE,
+                        stderr=sp.PIPE,
+                        shell=True,
+                        check=True,
+                    )
+                    .stdout.decode()
+                    .strip()
+                )
+            except sp.CalledProcessError as e:
+                raise_python_error(f"Error: {e.stderr}")
+
+            ver_match = PVTHON_VERSION_RE.match(ver_str)
+            if ver_match is None:
+                raise_python_error(f"No or invalid python version found: {ver_str}")
+            python_version = ver_match.group("ver")
+
             try:
                 sp.run(
                     [
                         "uv",
                         "pip",
                         "install",
-                        "--venv",
-                        self.deployment_path,
-                        " ".join(pypi_specs),
+                        "--prefix",
+                        str(self.deployment_path),
+                        "--python",
+                        python_version,
+                        *pypi_specs,
                     ],
                     check=True,
                     stdout=sp.PIPE,
                     stderr=sp.PIPE,
                 )
             except sp.CalledProcessError as e:
-                raise WorkflowError("Failed to install pypi packages", e)
+                raise WorkflowError(f"Failed to install pypi packages: {e.stderr}", e)
 
     def is_deployment_path_portable(self) -> bool:
         # Deployment isn't portable because RPATHs are hardcoded as absolute paths by
