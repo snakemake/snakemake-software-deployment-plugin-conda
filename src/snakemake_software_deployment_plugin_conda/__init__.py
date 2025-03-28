@@ -29,6 +29,9 @@ from rattler.match_spec import MatchSpec
 from rattler import solve, install, VirtualPackage
 from rattler.platform import Platform
 from rattler.repo_data import RepoDataRecord
+from snakemake_software_deployment_plugin_conda.pinfiles import (
+    get_match_specs_from_conda_pinfile,
+)
 
 
 PVTHON_VERSION_RE = re.compile(r"Python (?P<ver>\d+\.\d+\.\d+)")
@@ -222,26 +225,21 @@ class Env(EnvBase, DeployableEnvBase):
         return []
 
     async def _package_records(self) -> List[RepoDataRecord]:
-        if self.spec.pinfile.cached.exists():
-            with open(self.spec.pinfile.cached, "r") as f:
-                header = True
-                records = []
-                for record in f:
-                    if header:
-                        if record.strip() == "@EXPLICIT":
-                            header = False
-                    else:
-                        records.append(RepoDataRecord(url=record.strip()))
-        else:
-            return list(
-                await solve(
-                    channels=self.envfile_content["channels"],
-                    # The specs to solve for
-                    specs=self.conda_specs,
-                    # Virtual packages define the specifications of the environment
-                    virtual_packages=VirtualPackage.detect(),
-                )
+        specs = (
+            list(get_match_specs_from_conda_pinfile(self.spec.pinfile.cached))
+            if self.spec.pinfile.cached.exists()
+            else self.conda_specs
+        )
+
+        return list(
+            await solve(
+                channels=self.envfile_content["channels"],
+                # The specs to solve for
+                specs=specs,
+                # Virtual packages define the specifications of the environment
+                virtual_packages=VirtualPackage.detect(),
             )
+        )
 
     async def deploy(self) -> None:
         # Remove method if not deployable!

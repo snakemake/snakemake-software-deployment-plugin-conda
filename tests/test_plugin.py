@@ -50,14 +50,12 @@ class TestSoftwareDeployment(TestSoftwareDeploymentBase):
         return "stress-ng --cpu 1 --timeout 1s"
 
 
-# TODO enable pinned env test case.
-# For this to work, py-rattler has to accept a package URL as input.
-# The latter is work in progress in collaboration with Wolf.
-# class TestSoftwareDeploymentPinned(TestSoftwareDeployment):
-#     def get_env_spec(self) -> EnvSpecBase:
-#         return EnvSpec(
-#             envfile=EnvSpecSourceFile(Path(__file__).parent / "test_env_pinned.yaml")
-#         )
+# TODO requires https://github.com/conda/rattler/pull/1206 to be released
+class TestSoftwareDeploymentPinned(TestSoftwareDeployment):
+    def get_env_spec(self) -> EnvSpecBase:
+        return EnvSpec(
+            envfile=EnvSpecSourceFile(Path(__file__).parent / "test_env_pinned.yaml")
+        )
 
 
 class TestSoftwareDeploymentPypi(TestSoftwareDeployment):
