@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 import subprocess as sp
+from urllib.parse import urlparse
 
 import yaml
 
@@ -222,26 +223,35 @@ class Env(EnvBase, DeployableEnvBase):
         return []
 
     async def _package_records(self) -> List[RepoDataRecord]:
+        specs = self.conda_specs
+
         if self.spec.pinfile.cached.exists():
+            # obtain URLs from pinfile
+            # TODO also support modern pixi/rattler pinfiles
             with open(self.spec.pinfile.cached, "r") as f:
                 header = True
-                records = []
+                specs = []
                 for record in f:
                     if header:
                         if record.strip() == "@EXPLICIT":
                             header = False
                     else:
-                        records.append(RepoDataRecord(url=record.strip()))
-        else:
-            return list(
-                await solve(
-                    channels=self.envfile_content["channels"],
-                    # The specs to solve for
-                    specs=self.conda_specs,
-                    # Virtual packages define the specifications of the environment
-                    virtual_packages=VirtualPackage.detect(),
-                )
+                        parsed = urlparse(record.strip())
+                        package_components = Path(parsed.path).name.rsplit("-", 3)
+                        name = "-".join(package_components[:-2])
+                        md5 = parsed.fragment
+                        url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+                        specs.append(f"{name}[url='{url}', md5='{md5}']")
+
+        return list(
+            await solve(
+                channels=self.envfile_content["channels"],
+                # The specs to solve for
+                specs=specs,
+                # Virtual packages define the specifications of the environment
+                virtual_packages=VirtualPackage.detect(),
             )
+        )
 
     async def deploy(self) -> None:
         # Remove method if not deployable!
