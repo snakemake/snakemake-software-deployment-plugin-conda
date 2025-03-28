@@ -1,6 +1,6 @@
 [project]
 name = "snakemake-software-deployment-plugin-conda"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
