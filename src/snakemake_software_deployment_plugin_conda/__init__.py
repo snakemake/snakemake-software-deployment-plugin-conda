@@ -28,10 +28,20 @@ from rattler.shell import Shell, activate, ActivationVariables
 from rattler.match_spec import MatchSpec
 from rattler import solve, install, VirtualPackage
 from rattler.platform import Platform
-from rattler.repo_data import RepoDataRecord
+from rattler.repo_data import RepoDataRecord, Gateway
+from snakemake_software_deployment_plugin_conda.pinfiles import (
+    get_match_specs_from_conda_pinfile,
+)
 
 
 PVTHON_VERSION_RE = re.compile(r"Python (?P<ver>\d+\.\d+\.\d+)")
+
+
+def get_default_cache_dir() -> Optional[Path]:
+    cache_dir = os.environ.get("RATTLER_CACHE_DIR")
+    if cache_dir is not None:
+        return Path(cache_dir)
+    return None
 
 
 # Optional:
@@ -50,7 +60,7 @@ class SoftwareDeploymentSettings(SoftwareDeploymentSettingsBase):
     # in the main snakemake source can be generalized to all software deployment
     # plugins instead.
     cache_dir: Optional[Path] = field(
-        default=os.environ.get("RATTLER_CACHE_DIR"),
+        default_factory=get_default_cache_dir,
         metadata={
             "help": "Rattler cache dir to use (default: $RATTLER_CACHE_DIR).",
             "env_var": False,
@@ -103,6 +113,7 @@ class EnvSpec(EnvSpecBase):
         elif self.directory is not None:
             return str(self.directory)
         else:
+            assert self.name is not None
             return self.name
 
 
@@ -112,6 +123,7 @@ class Env(EnvBase, DeployableEnvBase):
     # futher stuff.
 
     def __post_init__(self):
+        self.gateway = Gateway()
         self._envfile_content = None
         if self.shell_executable == "bash":
             self.rattler_shell = Shell.bash
@@ -223,15 +235,15 @@ class Env(EnvBase, DeployableEnvBase):
 
     async def _package_records(self) -> List[RepoDataRecord]:
         if self.spec.pinfile.cached.exists():
-            with open(self.spec.pinfile.cached, "r") as f:
-                header = True
-                records = []
-                for record in f:
-                    if header:
-                        if record.strip() == "@EXPLICIT":
-                            header = False
-                    else:
-                        records.append(RepoDataRecord(url=record.strip()))
+            records, _, _ = await self.gateway.query(
+                channels=self.envfile_content["channels"],
+                platforms=[Platform.current()],
+                specs=list(
+                    get_match_specs_from_conda_pinfile(self.spec.pinfile.cached)
+                ),
+                recursive=False,
+            )
+            return records
         else:
             return list(
                 await solve(
@@ -254,8 +266,10 @@ class Env(EnvBase, DeployableEnvBase):
         # module).
         assert self.spec.envfile is not None
 
+        records = await self._package_records()
+
         await install(
-            records=await self._package_records(),
+            records=records,
             target_prefix=self.deployment_path,
             cache_dir=self.settings.cache_dir,
         )
@@ -270,42 +284,11 @@ class Env(EnvBase, DeployableEnvBase):
                     f"a conda package to the environment. {errmsg}"
                 )
 
-            try:
-                python_path = (
-                    sp.run(
-                        self.decorate_shellcmd("which python"),
-                        stdout=sp.PIPE,
-                        stderr=sp.PIPE,
-                        shell=True,
-                        check=True,
-                    )
-                    .stdout.decode()
-                    .strip()
+            python_path = self.deployment_path / "bin" / "python"
+            if not python_path.exists():
+                raise_python_error(
+                    f"No python found under {self.deployment_path}. If your environment contains pypi packages, please add python to the non-pypi packages list."
                 )
-            except sp.CalledProcessError as e:
-                raise_python_error(f"Error: {e.stderr}")
-            if self.deployment_path not in Path(python_path).parents:
-                raise_python_error(f"No python found under {self.deployment_path}.")
-
-            try:
-                ver_str = (
-                    sp.run(
-                        self.decorate_shellcmd("python --version"),
-                        stdout=sp.PIPE,
-                        stderr=sp.PIPE,
-                        shell=True,
-                        check=True,
-                    )
-                    .stdout.decode()
-                    .strip()
-                )
-            except sp.CalledProcessError as e:
-                raise_python_error(f"Error: {e.stderr}")
-
-            ver_match = PVTHON_VERSION_RE.match(ver_str)
-            if ver_match is None:
-                raise_python_error(f"No or invalid python version found: {ver_str}")
-            python_version = ver_match.group("ver")
 
             try:
                 sp.run(
@@ -316,7 +299,7 @@ class Env(EnvBase, DeployableEnvBase):
                         "--prefix",
                         str(self.deployment_path),
                         "--python",
-                        python_version,
+                        python_path,
                         *pypi_specs,
                     ],
                     check=True,
