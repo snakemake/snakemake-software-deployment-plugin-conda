@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.1.0...v0.2.0) (2025-05-16)
+
+
+### Features
+
+* add pypi support via uv ([#2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/2)) ([728c71a](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/728c71a8d4d62334ddb516acb23c992b5bcb656e))
+* support pinfiles ([#5](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/5)) ([58faba4](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/58faba47e8bb782dea27427f8419e4e5b47a6b20))
+
 ## 0.1.0 (2025-03-08)
 
 
