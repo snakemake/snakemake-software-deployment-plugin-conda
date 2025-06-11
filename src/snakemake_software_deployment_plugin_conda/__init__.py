@@ -139,9 +139,22 @@ class Env(EnvBase, DeployableEnvBase):
             )
 
     @EnvBase.once
-    def conda_env_directories(self) -> List[Path]:
-        # TODO implement this for micromamba, conda, mamba and any future conda client
-        ...
+    def conda_env_directories(self) -> Iterable[Path]:
+        for client in ("micromamba", "conda", "mamba"):
+            try:
+                output = self.run_cmd(f"{client} info --json", check=True)
+                info = json.loads(output.stdout)
+                env_dirs = info.get("envs directories", [])
+                if not isinstance(env_dirs, list):
+                    raise WorkflowError(
+                        f"Expected 'envs_dirs' to be a list, got {type(env_dirs)}"
+                    )
+                yield from (Path(d) for d in env_dirs)
+            except sp.CalledProcessError as e:
+                raise WorkflowError(
+                    f"Failed to get {client} info.",
+                    e,
+                )
 
     def env_prefix(self) -> Path:
         if self.spec.envfile is not None:
@@ -149,13 +162,20 @@ class Env(EnvBase, DeployableEnvBase):
         elif self.spec.directory is not None:
             return self.spec.directory
         else:
-            # TODO convert name into path of the deployed environment
-            # Use something like $CONDA_ENVS_PATH / self.spec.name here
-            # Question is how t
-            for env_dir in self.conda_env_directories():
-                if (env_dir / self.spec.name).is_dir():
-                    return env_dir / self.spec.name
-            raise WorkflowError(f"Could not find environment {self.spec.name}")
+            candidates = {
+                env_dir / self.spec.name
+                for env_dir in self.conda_env_directories()
+                if (env_dir / self.spec.name).is_dir()
+            }
+            if len(candidates) == 1:
+                return next(iter(candidates))
+            elif len(candidates) > 1:
+                raise WorkflowError(
+                    f"Multiple environments found with name {self.spec.name}: "
+                    f"{', '.join(map(str, candidates))}"
+                )
+            else:
+                raise WorkflowError(f"Could not find environment {self.spec.name}")
 
     @property
     def envfile_content(self) -> Dict[str, list]:
