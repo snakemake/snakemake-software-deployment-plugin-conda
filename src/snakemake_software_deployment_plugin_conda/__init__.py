@@ -23,6 +23,7 @@ from snakemake_interface_software_deployment_plugins import (
     SoftwareReport,
     EnvSpecSourceFile,
 )
+from snakemake_interface_software_deployment_plugins.platforms import Arch, Bits, System
 
 from rattler.shell import Shell, activate, ActivationVariables
 from rattler.match_spec import MatchSpec
@@ -32,6 +33,7 @@ from rattler.repo_data import RepoDataRecord, Gateway
 from snakemake_software_deployment_plugin_conda.pinfiles import (
     get_match_specs_from_conda_pinfile,
 )
+import rattler.exceptions
 
 
 PVTHON_VERSION_RE = re.compile(r"Python (?P<ver>\d+\.\d+\.\d+)")
@@ -170,6 +172,19 @@ class Env(EnvBase, DeployableEnvBase):
                 )
         return self._envfile_content
 
+    async def is_supported_platform(self, system: System, arch: Arch, bits: Bits) -> bool:
+        {
+            (System.LINUX, Arch.X86, Bits.BITS_64): Platform("linux-64"),
+            (System.LINUX, Arch.X86, Bits.BITS_32): Platform("linux-32"),
+            (System.LINUX, Arch.ARM, Bits.BITS_64): Platform("linux-aarch64"),
+            (System.LINUX, Arch.ARM, Bits.BITS_32): Platform("linux-armv7l"),
+        }
+        try:
+            await self._package_records(platform=Platform(platform))
+        except rattler.exceptions.SolverError:
+            return False
+        return True
+
     def decorate_shellcmd(self, cmd: str) -> str:
         # Decorate given shell command such that it runs within the environment.
 
@@ -233,17 +248,21 @@ class Env(EnvBase, DeployableEnvBase):
                 return spec["pip"]
         return []
 
-    async def _package_records(self) -> List[RepoDataRecord]:
+    async def _package_records(self, platform: Optional[Platform] = None) -> List[RepoDataRecord]:
+        if platform is None:
+            platform = Platform.current()
+        platforms = [Platform("noarch"), platform]
+
         if self.spec.pinfile.cached.exists():
-            records, _, _ = await self.gateway.query(
+            records = await self.gateway.query(
                 channels=self.envfile_content["channels"],
-                platforms=[Platform.current()],
+                platforms=platforms,
                 specs=list(
                     get_match_specs_from_conda_pinfile(self.spec.pinfile.cached)
                 ),
                 recursive=False,
             )
-            return records
+            return list(chain.from_iterable(records))
         else:
             return list(
                 await solve(
@@ -252,6 +271,7 @@ class Env(EnvBase, DeployableEnvBase):
                     specs=self.conda_specs,
                     # Virtual packages define the specifications of the environment
                     virtual_packages=VirtualPackage.detect(),
+                    platforms=platforms,
                 )
             )
 
