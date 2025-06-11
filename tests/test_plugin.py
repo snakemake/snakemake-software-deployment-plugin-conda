@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from typing import Optional, Type
 from snakemake_interface_software_deployment_plugins.tests import (
@@ -7,6 +8,9 @@ from snakemake_interface_software_deployment_plugins import (
     EnvSpecBase,
     EnvBase,
     EnvSpecSourceFile,
+)
+from snakemake_interface_software_deployment_plugins.platforms import (
+    System, Arch, Bits
 )
 from snakemake_interface_software_deployment_plugins.settings import (
     SoftwareDeploymentSettingsBase,
