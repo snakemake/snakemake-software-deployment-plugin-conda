@@ -278,6 +278,7 @@ class Env(EnvBase, PinnableEnvBase, CacheableEnvBase, DeployableEnvBase):
             await f.write("@EXPLICIT\n")
             for record in records:
                 await f.write(f"{record.url}\n")
+
     async def get_cache_assets(self) -> Iterable[str]:
         return (
             record_to_asset_name(record) for record in await self._package_records()
