@@ -85,7 +85,10 @@ class EnvSpec(EnvSpecBase):
             return self.name
 
 
-class Env(EnvBase, PinnableEnvBase, CacheableEnvBase, DeployableEnvBase):
+class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
+    shell_executable: str
+    spec: EnvSpec  # type: ignore
+
     # For compatibility with future changes, you should not overwrite the __init__
     # method. Instead, use __post_init__ to set additional attributes and initialize
     # futher stuff.
@@ -138,6 +141,7 @@ class Env(EnvBase, PinnableEnvBase, CacheableEnvBase, DeployableEnvBase):
         elif self.spec.directory is not None:
             return self.spec.directory
         else:
+            assert self.spec.name is not None
             candidates = {
                 env_dir / self.spec.name
                 for env_dir in self.conda_env_directories()
@@ -156,6 +160,8 @@ class Env(EnvBase, PinnableEnvBase, CacheableEnvBase, DeployableEnvBase):
     @property
     def envfile_content(self) -> Dict[str, list]:
         if self._envfile_content is None:
+            assert self.spec.envfile is not None
+            assert self.spec.envfile.cached is not None
             try:
                 with open(self.spec.envfile.cached, "r") as f:
                     self._envfile_content = yaml.load(f, Loader=yaml.SafeLoader)
@@ -185,8 +191,9 @@ class Env(EnvBase, PinnableEnvBase, CacheableEnvBase, DeployableEnvBase):
                 json.dumps(self.envfile_content, sort_keys=True).encode()
             )
         elif self.spec.directory is not None:
-            hash_object.update(self.spec.directory.encode())
+            hash_object.update(str(self.spec.directory).encode())
         else:
+            assert self.spec.name is not None
             hash_object.update(self.spec.name.encode())
 
     def report_software(self) -> Iterable[SoftwareReport]:
