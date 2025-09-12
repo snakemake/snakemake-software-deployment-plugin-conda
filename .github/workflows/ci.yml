@@ -43,6 +43,8 @@ jobs:
         uses: prefix-dev/setup-pixi@v0
 
       - uses: conda-incubator/setup-miniconda@v3
+        with:
+          channels: conda-forge,nodefaults
 
       - name: Deploy external test env
         shell: bash -el {0}
