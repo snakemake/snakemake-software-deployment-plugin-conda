@@ -1,33 +1,77 @@
 [project]
 name = "snakemake-software-deployment-plugin-conda"
 version = "0.2.0"
-description = ""
+authors = [
+    { name = "Johannes Köster", email = "johannes.koester@uni-due.de" },
+]
+description = "Software deployment plugin for Snakemake using rattler to deploy conda packages."
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
 dependencies = [
     "snakemake-interface-common (>=1.17.4,<2.0.0)",
-    "snakemake-interface-software-deployment-plugins (>=0.6.1,<1.0)",
-    "py-rattler (>=0.12.0,<0.13.0)",
+    "snakemake-interface-software-deployment-plugins (>=0.7.1,<1.0)",
+    "py-rattler (>=0.12.0,<0.16.0)",
     "pyyaml (>=6.0.2,<7.0.0)",
     "uv (>=0.6.5,<0.7.0)",
 ]
-repository = "https://github.com/your/plugin"
+
+[tool.pixi.pypi-dependencies]
+snakemake-software-deployment-plugin-conda = { path = ".", editable = true }
+
+[project.urls]
+repository = "https://github.com/snakemake/snakemake-software-deployment-plugin-conda"
 documentation = "https://snakemake.github.io/snakemake-plugin-catalog/plugins/software-deployment/conda.html"
-[[project.authors]]
-name = "Johannes Koester"
-email = "johannes.koester@uni-due.de"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry]
-[[tool.poetry.packages]]
-include = "snakemake_software_deployment_plugin_conda"
-from = "src"
+[tool.pixi.project]
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "linux-64"]
 
+[tool.pixi.environments]
+dev = { features = ["dev"] }
+publish = { features = ["publish"] }
 
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.9.9"
-coverage = "^7.6.12"
-pytest = "^8.3.5"
+[tool.pixi.feature.dev.dependencies]
+pytest = ">=8.3.5,<9"
+ruff = ">=0.10.0,<0.11"
+pytest-cov = ">=6.0.0,<7"
+
+[tool.pixi.feature.dev.tasks]
+format = "ruff format"
+lint = "ruff check"
+qc = { depends-on = ["format", "lint"] }
+coverage-report = "coverage report -m"
+
+[tool.pixi.feature.dev.tasks.test]
+cmd = [
+  "pytest",
+  "--cov=snakemake_software_deployment_plugin_conda",
+  "--cov-report=xml:coverage-report/coverage.xml",
+  "--cov-report=term-missing",
+  "tests/test_plugin.py"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pass",
+  "\\.\\.\\.",
+]
+fail_under = 70.0
+
+# Publish
+[tool.pixi.feature.publish.dependencies]
+twine = ">=6.1.0,<7"
+python-build = ">=1.2.2,<2"
+
+[tool.pixi.feature.publish.tasks]
+build = { cmd = "python -m build", description = "Build the package into the dist/ directory" }
+check-build = { cmd = "python -m twine check dist/*", depends-on = [
+  "build",
+], description = "Check that the package can be uploaded" }
+
+[tool.pixi.dependencies]
+requests = ">=2.32.5,<3"
+aiofiles = ">=24.1.0,<25"
