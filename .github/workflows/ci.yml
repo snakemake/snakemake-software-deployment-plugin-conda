@@ -7,7 +7,7 @@ on:
   pull_request:
 
 env:
-  PYTHON_VERSION: 3.11
+  TEST_ENV_DIR: /tmp/test-env
 
 jobs:
   linting:
@@ -63,8 +63,19 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
+      - uses: conda-incubator/setup-miniconda@v3
+
+      - name: Deploy external test env
+        shell: bash -el {0}
+        run: |
+          conda create -n test-env stress-ng
+          conda create -p $TEST_ENV_DIR stress-ng
+
       - name: Run pytest
-        run: poetry run coverage run -m pytest
+        env:
+          TEST_NAMED_ENV: "1"
+          TEST_DIRECTORY_ENV: "1"
+        run: pixi run test
 
       - name: Run Coverage
         run: poetry run coverage report -m
