@@ -1,24 +1,26 @@
 from itertools import chain
 import json
 import os
-import re
 import shutil
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 import subprocess as sp
 
+import httpx
 import yaml
+import aiofiles
 
 from snakemake_interface_common.exceptions import WorkflowError
 from snakemake_interface_software_deployment_plugins.settings import (
-    SoftwareDeploymentSettingsBase,
     CommonSettings,
 )
 from snakemake_interface_software_deployment_plugins import (
     EnvBase,
     DeployableEnvBase,
+    CacheableEnvBase,
+    PinnableEnvBase,
     EnvSpecBase,
     SoftwareReport,
     EnvSpecSourceFile,
@@ -34,39 +36,7 @@ from snakemake_software_deployment_plugin_conda.pinfiles import (
 )
 
 
-PVTHON_VERSION_RE = re.compile(r"Python (?P<ver>\d+\.\d+\.\d+)")
-
-
-def get_default_cache_dir() -> Optional[Path]:
-    cache_dir = os.environ.get("RATTLER_CACHE_DIR")
-    if cache_dir is not None:
-        return Path(cache_dir)
-    return None
-
-
-# Optional:
-# Define settings for your storage plugin (e.g. host url, credentials).
-# They will occur in the Snakemake CLI as --sdm-<plugin-name>-<param-name>
-# Make sure that all defined fields are 'Optional' and specify a default value
-# of None or anything else that makes sense in your case.
-# Note that we allow storage plugin settings to be tagged by the user. That means,
-# that each of them can be specified multiple times (an implicit nargs=+), and
-# the user can add a tag in front of each value (e.g. tagname1:value1 tagname2:value2).
-# This way, a storage plugin can be used multiple times within a workflow with different
-# settings.
-@dataclass
-class SoftwareDeploymentSettings(SoftwareDeploymentSettingsBase):
-    # TODO think about necessary settings here. All the current --conda settings
-    # in the main snakemake source can be generalized to all software deployment
-    # plugins instead.
-    cache_dir: Optional[Path] = field(
-        default_factory=get_default_cache_dir,
-        metadata={
-            "help": "Rattler cache dir to use (default: $RATTLER_CACHE_DIR).",
-            "env_var": False,
-            "required": False,
-        },
-    )
+PINFILE_SUFFIX = f".{Platform.current()}.pin.txt"
 
 
 common_settings = CommonSettings(
@@ -89,9 +59,7 @@ class EnvSpec(EnvSpecBase):
 
         if self.envfile is not None:
             self.pinfile = EnvSpecSourceFile(
-                Path(self.envfile.path_or_uri).with_suffix(
-                    f".{Platform.current()}.pin.txt"
-                )
+                Path(self.envfile.path_or_uri).with_suffix(PINFILE_SUFFIX)
             )
 
     @classmethod
@@ -117,13 +85,14 @@ class EnvSpec(EnvSpecBase):
             return self.name
 
 
-class Env(EnvBase, DeployableEnvBase):
+class Env(EnvBase, PinnableEnvBase, CacheableEnvBase, DeployableEnvBase):
     # For compatibility with future changes, you should not overwrite the __init__
     # method. Instead, use __post_init__ to set additional attributes and initialize
     # futher stuff.
 
     def __post_init__(self):
         self.gateway = Gateway()
+        self._package_records_cache: Optional[List[RepoDataRecord]] = None
         self._envfile_content = None
         if self.shell_executable == "bash":
             self.rattler_shell = Shell.bash
@@ -139,9 +108,29 @@ class Env(EnvBase, DeployableEnvBase):
             )
 
     @EnvBase.once
-    def conda_env_directories(self) -> List[Path]:
-        # TODO implement this for micromamba, conda, mamba and any future conda client
-        ...
+    def conda_env_directories(self) -> Iterable[Path]:
+        errors = {}
+        success = False
+        for client in ("micromamba", "conda", "mamba"):
+            try:
+                output = self.run_cmd(f"{client} info --json", check=True)
+                info = json.loads(output.stdout)
+                env_dirs = info.get("envs directories", info.get("envs_dirs", []))
+                if not isinstance(env_dirs, list):
+                    errors[client] = (
+                        f"Expected environment dirs to be a list, got {type(env_dirs)}."
+                    )
+                    continue
+                success = True
+                yield from (Path(d) for d in env_dirs)
+            except sp.CalledProcessError as e:
+                errors[client] = f"Failed to run {client}: {e}"
+                continue
+        if errors and not success:
+            raise WorkflowError(
+                "Could not determine conda environment directories. Tried the following clients:\n"
+                + "\n".join(f"{client}: {error}" for client, error in errors.items())
+            )
 
     def env_prefix(self) -> Path:
         if self.spec.envfile is not None:
@@ -149,13 +138,20 @@ class Env(EnvBase, DeployableEnvBase):
         elif self.spec.directory is not None:
             return self.spec.directory
         else:
-            # TODO convert name into path of the deployed environment
-            # Use something like $CONDA_ENVS_PATH / self.spec.name here
-            # Question is how t
-            for env_dir in self.conda_env_directories():
-                if (env_dir / self.spec.name).is_dir():
-                    return env_dir / self.spec.name
-            raise WorkflowError(f"Could not find environment {self.spec.name}")
+            candidates = {
+                env_dir / self.spec.name
+                for env_dir in self.conda_env_directories()
+                if (env_dir / self.spec.name).is_dir()
+            }
+            if len(candidates) == 1:
+                return next(iter(candidates))
+            elif len(candidates) > 1:
+                raise WorkflowError(
+                    f"Multiple environments found with name {self.spec.name}: "
+                    f"{', '.join(map(str, candidates))}"
+                )
+            else:
+                raise WorkflowError(f"Could not find environment {self.spec.name}")
 
     @property
     def envfile_content(self) -> Dict[str, list]:
@@ -201,12 +197,14 @@ class Env(EnvBase, DeployableEnvBase):
         # hide those for clarity. In case of containers, it is also valid to
         # return the container URI as a "software".
         # Return an empty list if no software can be reported.
+        assert isinstance(self.spec, EnvSpec)
         if self.spec.envfile is not None:
 
             def entry_to_report(entry):
                 entry = MatchSpec(entry)
+                assert entry.name is not None
                 return SoftwareReport(
-                    name=entry.name,
+                    name=entry.name.normalized,
                     version=entry.version,
                 )
 
@@ -234,26 +232,75 @@ class Env(EnvBase, DeployableEnvBase):
         return []
 
     async def _package_records(self) -> List[RepoDataRecord]:
-        if self.spec.pinfile.cached.exists():
-            records, _, _ = await self.gateway.query(
-                channels=self.envfile_content["channels"],
-                platforms=[Platform.current()],
-                specs=list(
-                    get_match_specs_from_conda_pinfile(self.spec.pinfile.cached)
-                ),
-                recursive=False,
+        if self._package_records_cache is None:
+            assert isinstance(self.spec, EnvSpec)
+            assert self.spec.pinfile is not None
+            assert self.spec.pinfile.cached is not None
+            assert self.spec.envfile is not None
+
+            pinfile = (
+                self.spec.pinfile.cached
+                if self.spec.pinfile.cached.exists()
+                else self.pinfile
             )
-            return records
-        else:
-            return list(
-                await solve(
-                    channels=self.envfile_content["channels"],
-                    # The specs to solve for
-                    specs=self.conda_specs,
-                    # Virtual packages define the specifications of the environment
-                    virtual_packages=VirtualPackage.detect(),
+
+            if pinfile.exists():
+                records = list(
+                    chain.from_iterable(
+                        await self.gateway.query(
+                            channels=self.envfile_content["channels"],
+                            platforms=[Platform.current()],
+                            specs=list(get_match_specs_from_conda_pinfile(pinfile)),
+                            recursive=False,
+                        )
+                    )
                 )
-            )
+                self._package_records_cache = records
+            else:
+                self._package_records_cache = list(
+                    await solve(
+                        channels=self.envfile_content["channels"],
+                        # The specs to solve for
+                        specs=self.conda_specs,
+                        # Virtual packages define the specifications of the environment
+                        virtual_packages=VirtualPackage.detect(),
+                    )
+                )
+        return self._package_records_cache
+
+    @classmethod
+    def pinfile_extension(cls) -> str:
+        return PINFILE_SUFFIX
+
+    async def pin(self) -> None:
+        records = await self._package_records()
+        async with aiofiles.open(self.pinfile, "w") as f:
+            await f.write("@EXPLICIT\n")
+            for record in records:
+                await f.write(f"{record.url}\n")
+
+    async def get_cache_assets(self) -> Iterable[str]:
+        return (
+            record_to_asset_name(record) for record in await self._package_records()
+        )
+
+    async def cache_assets(self) -> None:
+        for record in await self._package_records():
+            pkg_name = record_to_asset_name(record)
+            async with httpx.AsyncClient() as http_client:
+                response = await http_client.get(record.url)
+                response.raise_for_status()
+                # The naming scheme used here follows the same pattern as rsync.
+                # This way, we benefit from rsync specific optimizations in network
+                # filtesystems like GlusterFS (see
+                # https://developers.redhat.com/blog/2018/08/14/improving-rsync-performance-with-glusterfs)
+                tmp_cache_path = self.cache_path / f".{pkg_name}.part"
+                cache_path = self.cache_path / pkg_name
+                if not cache_path.exists():
+                    async with aiofiles.open(tmp_cache_path, "wb") as f:
+                        async for chunk in response.aiter_bytes(chunk_size=1024):
+                            await f.write(chunk)
+                    os.replace(tmp_cache_path, cache_path)
 
     async def deploy(self) -> None:
         # Remove method if not deployable!
@@ -271,7 +318,7 @@ class Env(EnvBase, DeployableEnvBase):
         await install(
             records=records,
             target_prefix=self.deployment_path,
-            cache_dir=self.settings.cache_dir,
+            cache_dir=self.cache_path,
         )
 
         pypi_specs = [spec.replace(" ", "") for spec in self.pypi_specs]
@@ -320,3 +367,11 @@ class Env(EnvBase, DeployableEnvBase):
         # any additional cleanup.
         assert self.spec.envfile is not None
         shutil.rmtree(self.deployment_path)
+
+    def is_deployable(self) -> bool:
+        # Return True if the environment can be deployed, False otherwise.
+        return self.spec.envfile is not None or self.spec.pinfile is not None
+
+
+def record_to_asset_name(record: RepoDataRecord) -> str:
+    return record.url.split("/")[-1]

@@ -15,7 +15,6 @@ from snakemake_interface_software_deployment_plugins.settings import (
 from snakemake_software_deployment_plugin_conda import (
     Env,
     EnvSpec,
-    SoftwareDeploymentSettings,
 )
 
 
@@ -38,12 +37,16 @@ class Test(TestSoftwareDeploymentBase):
         # Return the environment class that should be tested.
         return Env
 
-    def get_software_deployment_provider_settings(
+    def get_settings_cls(self) -> Optional[Type[SoftwareDeploymentSettingsBase]]:
+        # Return the settings class that should be used for this plugin.
+        return None
+
+    def get_settings(
         self,
     ) -> Optional[SoftwareDeploymentSettingsBase]:
         # If your plugin has settings, return a valid settings object here.
         # Otherwise, return None.
-        return SoftwareDeploymentSettings(cache_dir=None)
+        return None
 
     def get_test_cmd(self) -> str:
         # Return a test command that should be executed within the environment
