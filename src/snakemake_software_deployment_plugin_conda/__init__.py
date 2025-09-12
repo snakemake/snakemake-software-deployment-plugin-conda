@@ -275,10 +275,9 @@ class Env(EnvBase, PinnableEnvBase, CacheableEnvBase, DeployableEnvBase):
     async def pin(self) -> None:
         records = await self._package_records()
         async with aiofiles.open(self.pinfile, "w") as f:
-            print("@EXPLICIT", file=f)
+            await f.write("@EXPLICIT\n")
             for record in records:
-                print(record.url, file=f)
-
+                await f.write(f"{record.url}\n")
     async def get_cache_assets(self) -> Iterable[str]:
         return (
             record_to_asset_name(record) for record in await self._package_records()
