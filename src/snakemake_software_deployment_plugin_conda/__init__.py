@@ -112,10 +112,10 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
 
     def is_cacheable(self) -> bool:
         return self.spec.envfile is not None
-    
+
     def is_pinnable(self) -> bool:
         return self.spec.envfile is not None
-    
+
     def is_deployable(self) -> bool:
         return self.spec.envfile is not None
 
