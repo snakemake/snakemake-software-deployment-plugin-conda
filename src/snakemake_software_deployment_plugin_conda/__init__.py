@@ -110,6 +110,15 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 f"Unsupported shell executable: {self.shell_executable}"
             )
 
+    def is_cacheable(self) -> bool:
+        return self.spec.envfile is not None
+    
+    def is_pinnable(self) -> bool:
+        return self.spec.envfile is not None
+    
+    def is_deployable(self) -> bool:
+        return self.spec.envfile is not None
+
     @EnvBase.once
     def conda_env_directories(self) -> Iterable[Path]:
         errors = {}
@@ -374,10 +383,6 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         # any additional cleanup.
         assert self.spec.envfile is not None
         shutil.rmtree(self.deployment_path)
-
-    def is_deployable(self) -> bool:
-        # Return True if the environment can be deployed, False otherwise.
-        return self.spec.envfile is not None or self.spec.pinfile is not None
 
 
 def record_to_asset_name(record: RepoDataRecord) -> str:
