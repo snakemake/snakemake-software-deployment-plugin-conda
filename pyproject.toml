@@ -13,6 +13,8 @@ dependencies = [
     "py-rattler (>=0.12.0,<0.16.0)",
     "pyyaml (>=6.0.2,<7.0.0)",
     "uv (>=0.6.5,<0.7.0)",
+    "aiofiles (>=24.1.0,<25)",
+    "httpx (>=0.28.1,<0.29)",
 ]
 
 [tool.pixi.pypi-dependencies]
@@ -72,6 +74,3 @@ check-build = { cmd = "python -m twine check dist/*", depends-on = [
   "build",
 ], description = "Check that the package can be uploaded" }
 
-[tool.pixi.dependencies]
-requests = ">=2.32.5,<3"
-aiofiles = ">=24.1.0,<25"

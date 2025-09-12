@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 import subprocess as sp
 
+import httpx
 import yaml
-import requests
 import aiofiles
 
 from snakemake_interface_common.exceptions import WorkflowError
@@ -287,19 +287,20 @@ class Env(EnvBase, PinnableEnvBase, CacheableEnvBase, DeployableEnvBase):
     async def cache_assets(self) -> None:
         for record in await self._package_records():
             pkg_name = record_to_asset_name(record)
-            response = requests.get(record.url, stream=True)
-            response.raise_for_status()
-            # The naming scheme used here follows the same pattern as rsync.
-            # This way, we benefit from rsync specific optimizations in network
-            # filtesystems like GlusterFS (see
-            # https://developers.redhat.com/blog/2018/08/14/improving-rsync-performance-with-glusterfs)
-            tmp_cache_path = self.cache_path / f".{pkg_name}.part"
-            cache_path = self.cache_path / pkg_name
-            if not cache_path.exists():
-                async with aiofiles.open(tmp_cache_path, "wb") as f:
-                    for chunk in response.iter_content(chunk_size=1024):
-                        await f.write(chunk)
-                os.replace(tmp_cache_path, cache_path)
+            async with httpx.AsyncClient() as http_client:
+                response = await http_client.get(record.url)
+                response.raise_for_status()
+                # The naming scheme used here follows the same pattern as rsync.
+                # This way, we benefit from rsync specific optimizations in network
+                # filtesystems like GlusterFS (see
+                # https://developers.redhat.com/blog/2018/08/14/improving-rsync-performance-with-glusterfs)
+                tmp_cache_path = self.cache_path / f".{pkg_name}.part"
+                cache_path = self.cache_path / pkg_name
+                if not cache_path.exists():
+                    async with aiofiles.open(tmp_cache_path, "wb") as f:
+                        async for chunk in response.aiter_bytes(chunk_size=1024):
+                            await f.write(chunk)
+                    os.replace(tmp_cache_path, cache_path)
 
     async def deploy(self) -> None:
         # Remove method if not deployable!
