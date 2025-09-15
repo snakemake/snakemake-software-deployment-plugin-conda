@@ -189,10 +189,12 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             activation_variables=ActivationVariables(None, sys.path),
             shell=self.rattler_shell,
         )
-        return f"""
+        decorated = f"""
         {act_obj.script}
         {cmd}
         """
+        print(f"Decorated command: {decorated}", file=sys.stderr)
+        return decorated
 
     def record_hash(self, hash_object) -> None:
         if self.spec.envfile is not None:
