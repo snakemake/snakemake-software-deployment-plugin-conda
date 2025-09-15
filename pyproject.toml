@@ -1,6 +1,6 @@
 [project]
 name = "snakemake-software-deployment-plugin-conda"
-version = "0.3.0"
+version = "0.3.1"
 authors = [
     { name = "Johannes Köster", email = "johannes.koester@uni-due.de" },
 ]
