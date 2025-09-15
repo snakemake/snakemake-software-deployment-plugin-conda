@@ -185,16 +185,14 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         # Decorate given shell command such that it runs within the environment.
 
         act_obj = activate(
-            prefix=self.deployment_path,
+            prefix=self.env_prefix(),
             activation_variables=ActivationVariables(None, sys.path),
             shell=self.rattler_shell,
         )
-        decorated = f"""
+        return f"""
         {act_obj.script}
         {cmd}
         """
-        print(f"Decorated command: {decorated}", file=sys.stderr)
-        return decorated
 
     def record_hash(self, hash_object) -> None:
         if self.spec.envfile is not None:
