@@ -125,19 +125,29 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         success = False
         for client in ("micromamba", "conda", "mamba"):
             try:
-                output = self.run_cmd(f"{client} info --json", check=True)
-                info = json.loads(output.stdout)
-                env_dirs = info.get("envs directories", info.get("envs_dirs", []))
-                if not isinstance(env_dirs, list):
-                    errors[client] = (
-                        f"Expected environment dirs to be a list, got {type(env_dirs)}."
-                    )
-                    continue
-                success = True
-                yield from (Path(d) for d in env_dirs)
+                output = self.run_cmd(
+                    f"{client} info --json",
+                    stderr=sp.STDOUT,
+                    stdout=sp.PIPE,
+                    check=True,
+                )
             except sp.CalledProcessError as e:
                 errors[client] = f"Failed to run {client}: {e}"
                 continue
+            try:
+                info = json.loads(output.stdout)
+            except Exception as e:
+                errors[client] = f"Failed to parse {client} info output: {e}"
+                continue
+
+            env_dirs = info.get("envs directories", info.get("envs_dirs", []))
+            if not isinstance(env_dirs, list):
+                errors[client] = (
+                    f"Expected environment dirs to be a list, got {type(env_dirs)}."
+                )
+                continue
+            success = True
+            yield from (Path(d) for d in env_dirs)
         if errors and not success:
             raise WorkflowError(
                 "Could not determine conda environment directories. Tried the following clients:\n"
