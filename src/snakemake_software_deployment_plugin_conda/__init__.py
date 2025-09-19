@@ -109,9 +109,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         elif shell_executable == "fish":
             self.rattler_shell = Shell.fish
         else:
-            raise WorkflowError(
-                f"Unsupported shell executable: {shell_executable}"
-            )
+            raise WorkflowError(f"Unsupported shell executable: {shell_executable}")
 
     def is_cacheable(self) -> bool:
         return self.spec.envfile is not None
