@@ -97,17 +97,20 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         self.gateway = Gateway()
         self._package_records_cache: Optional[List[RepoDataRecord]] = None
         self._envfile_content = None
-        if self.shell_executable == "bash":
+
+        shell_executable = Path(self.shell_executable[0]).name
+
+        if shell_executable == "bash":
             self.rattler_shell = Shell.bash
-        elif self.shell_executable == "zsh":
+        elif shell_executable == "zsh":
             self.rattler_shell = Shell.zsh
-        elif self.shell_executable == "xonsh":
+        elif shell_executable == "xonsh":
             self.rattler_shell = Shell.xonsh
-        elif self.shell_executable == "fish":
+        elif shell_executable == "fish":
             self.rattler_shell = Shell.fish
         else:
             raise WorkflowError(
-                f"Unsupported shell executable: {self.shell_executable}"
+                f"Unsupported shell executable: {shell_executable}"
             )
 
     def is_cacheable(self) -> bool:
