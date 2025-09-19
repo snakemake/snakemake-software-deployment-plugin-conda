@@ -98,7 +98,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         self._package_records_cache: Optional[List[RepoDataRecord]] = None
         self._envfile_content = None
 
-        shell_executable = Path(self.shell_executable[0]).name
+        shell_executable = self.shell_executable.name
 
         if shell_executable == "bash":
             self.rattler_shell = Shell.bash
