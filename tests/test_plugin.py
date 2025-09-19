@@ -24,9 +24,6 @@ from snakemake_software_deployment_plugin_conda import (
 # within, and, if applicable, environment deployment and archiving.
 class Test(TestSoftwareDeploymentBase):
     __test__ = True  # activate automatic testing
-    # optional, default is "bash" change if your test suite requires a different
-    # shell or you want to have multiple instance of this class testing various shells
-    shell_executable = "bash"
 
     def get_env_spec(self) -> EnvSpecBase:
         return EnvSpec(
