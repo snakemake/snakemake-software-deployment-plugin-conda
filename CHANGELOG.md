@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.1...v0.3.2) (2025-09-19)
+
+
+### Bug Fixes
+
+* update to latest interface ([72f4ca9](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/72f4ca90971f594bb1a86428063d74b00c7c89c1))
+* update to latest interface ([e806317](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/e806317efc9ebe1660cfb01425f97075e0eb66aa))
+
 ## [0.3.1](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.0...v0.3.1) (2025-09-15)
 
 
