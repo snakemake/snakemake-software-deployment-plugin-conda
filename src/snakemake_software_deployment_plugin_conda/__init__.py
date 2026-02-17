@@ -1,12 +1,19 @@
+import subprocess
+import inspect
+import copy
+from io import BytesIO
+import importlib.metadata
 from itertools import chain
 import json
 import os
+import pickle
 import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 import subprocess as sp
+import shlex
 
 import httpx
 import yaml
@@ -34,6 +41,9 @@ from rattler.repo_data import RepoDataRecord, Gateway
 from snakemake_software_deployment_plugin_conda.pinfiles import (
     get_match_specs_from_conda_pinfile,
 )
+
+
+__version__ = importlib.metadata.version("snakemake-software-deployment-plugin-conda")
 
 
 PINFILE_SUFFIX = f".{Platform.current()}.pin.txt"
@@ -86,7 +96,6 @@ class EnvSpec(EnvSpecBase):
 
 
 class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
-    shell_executable: str
     spec: EnvSpec  # type: ignore
 
     # For compatibility with future changes, you should not overwrite the __init__
@@ -94,22 +103,8 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
     # futher stuff.
 
     def __post_init__(self):
-        self.gateway = Gateway()
         self._package_records_cache: Optional[List[RepoDataRecord]] = None
         self._envfile_content = None
-
-        shell_executable = self.shell_executable.name
-
-        if shell_executable == "bash":
-            self.rattler_shell = Shell.bash
-        elif shell_executable == "zsh":
-            self.rattler_shell = Shell.zsh
-        elif shell_executable == "xonsh":
-            self.rattler_shell = Shell.xonsh
-        elif shell_executable == "fish":
-            self.rattler_shell = Shell.fish
-        else:
-            raise WorkflowError(f"Unsupported shell executable: {shell_executable}")
 
     def is_cacheable(self) -> bool:
         return self.spec.envfile is not None
@@ -119,6 +114,21 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
 
     def is_deployable(self) -> bool:
         return self.spec.envfile is not None
+
+    @property
+    def rattler_shell(self) -> Shell:
+        shell_executable = self.shell_executable.name
+
+        if shell_executable == "bash":
+            return Shell.bash
+        elif shell_executable == "zsh":
+            return Shell.zsh
+        elif shell_executable == "xonsh":
+            return Shell.xonsh
+        elif shell_executable == "fish":
+            return Shell.fish
+        else:
+            raise WorkflowError(f"Unsupported shell executable: {shell_executable}")
 
     @EnvBase.once
     def conda_env_directories(self) -> Iterable[Path]:
@@ -272,9 +282,10 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             )
 
             if pinfile.exists():
+                gateway = Gateway()
                 records = list(
                     chain.from_iterable(
-                        await self.gateway.query(
+                        await gateway.query(
                             channels=self.envfile_content["channels"],
                             platforms=[Platform.current()],
                             specs=list(get_match_specs_from_conda_pinfile(pinfile)),
@@ -329,6 +340,40 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                             await f.write(chunk)
                     os.replace(tmp_cache_path, cache_path)
 
+    def run_method(self, name: str, *args: Any, **kwargs: Any) -> None:
+        # invoke this within the given environment
+        # pickle the object into a string
+        self.deployment_hash()
+        self_copy = copy.copy(self)
+        # Unset within such that really only this env is instantiated within.
+        # The hash will remain unchanged, as it is already computed and cached.
+        self_copy.within = None
+        assert self_copy._managed_deployment_hash_store is not None
+        pickled = pickle.dumps(self_copy)
+        fmt_args = ",".join(args)
+        if kwargs:
+            fmt_args += "," + ",".join(f"{kw}={arg!r}" for kw, arg in kwargs.items())
+
+        run_code = f"env.{name}({fmt_args})"
+        if inspect.iscoroutinefunction(getattr(self, name)):
+            run_code = f"asyncio.run({run_code})"
+
+        py_code = (
+            "import snakemake_software_deployment_plugin_conda, pickle, sys, asyncio; "
+            f"env = pickle.load(sys.stdin.buffer); "
+        ) + run_code
+
+        cmd = (
+            f"pip install snakemake-software-deployment-plugin-conda=={__version__} && "
+            f"python -c {shlex.quote(py_code)} && echo success"
+        )
+        try:
+            self.run_cmd(cmd, check=True, input=pickled, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            raise WorkflowError(f"Failed to deploy within parent environment {self.within.spec}: {e.stdout.decode()}") from e
+
+
+
     async def deploy(self) -> None:
         # Remove method if not deployable!
         # Deploy the environment to self.deployment_path, using self.spec
@@ -339,6 +384,9 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         # it runs within eventual parent environments (e.g. a container or an env
         # module).
         assert self.spec.envfile is not None
+
+        if self.within is not None:
+            return self.run_method("deploy")
 
         records = await self._package_records()
 
