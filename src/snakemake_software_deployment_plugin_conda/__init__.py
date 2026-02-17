@@ -364,8 +364,9 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         ) + run_code
 
         cmd = (
+            "(which pip && "
             f"pip install snakemake-software-deployment-plugin-conda=={__version__} && "
-            f"python -c {shlex.quote(py_code)} && echo success"
+            f"python -c {shlex.quote(py_code)}) || echo 'ERROR: pip command not found, but must be present to use snakemake-software-deployment-plugin-conda within another environment"
         )
         try:
             self.run_cmd(cmd, check=True, input=pickled, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
