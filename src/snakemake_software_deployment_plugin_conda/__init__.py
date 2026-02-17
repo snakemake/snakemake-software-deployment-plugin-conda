@@ -343,12 +343,19 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
     def run_method(self, name: str, *args: Any, **kwargs: Any) -> None:
         # invoke this within the given environment
         # pickle the object into a string
+
+        # ensure that deployment_hash is calculated and cached such that
+        # the same hash is used inside of the "within" environment
         self.deployment_hash()
+
+        # create a copy of the environment
         self_copy = copy.copy(self)
         # Unset within such that really only this env is instantiated within.
         # The hash will remain unchanged, as it is already computed and cached.
         self_copy.within = None
         assert self_copy._managed_deployment_hash_store is not None
+
+        # pickle the environment object for reuse inside of the "within" environment
         pickled = pickle.dumps(self_copy)
         fmt_args = ",".join(args)
         if kwargs:
@@ -363,12 +370,19 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             f"env = pickle.load(sys.stdin.buffer); "
         ) + run_code
 
+        # Ensure that this plugin is installed on-the-fly in the "within" environment.
+        # This assumes that pip is present, which is the case for conda containers,
+        # such that it this approach is backwards compatible even though the plugin
+        # uses rattler instead of the conda package manager.
         cmd = (
             "(which pip && "
             f"pip install snakemake-software-deployment-plugin-conda=={__version__} && "
-            f"python -c {shlex.quote(py_code)}) || echo 'ERROR: pip command not found, but must be present to use snakemake-software-deployment-plugin-conda within another environment"
+            f"python -c {shlex.quote(py_code)}) || echo 'ERROR: pip command not found, "
+            "but must be present to use snakemake-software-deployment-plugin-conda "
+            "within another environment"
         )
         try:
+            # run the requested method on the pickled object inside of the "within" environment
             self.run_cmd(cmd, check=True, input=pickled, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             raise WorkflowError(f"Failed to deploy within parent environment {self.within.spec}: {e.stdout.decode()}") from e
