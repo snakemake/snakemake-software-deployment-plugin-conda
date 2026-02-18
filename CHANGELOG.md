@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.3...v0.3.4) (2026-02-18)
+
+
+### Bug Fixes
+
+* further fixes to deployment and caching in combination with enclosing environments ([8bf2448](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/8bf24484c77661a179ddc240dc5c55f3a1988c45))
+
 ## [0.3.3](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.2...v0.3.3) (2026-02-18)
 
 
