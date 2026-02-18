@@ -79,6 +79,8 @@ class TestPypi(Test):
 
 class TestWithinContainer(Test):
     __test__ = True
+    # Do not use login shell here, we don't need an external conda but rather the udocker installed by pixi.
+    shell_executable = ShellExecutable("bash", args=[], command_arg="-c")
 
     def get_within_cls(self) -> Optional[Type[EnvBase]]:
         return ContainerEnv
@@ -92,6 +94,8 @@ class TestWithinContainer(Test):
 
 class TestPypiWithinContainer(TestPypi):
     __test__ = True
+    # Do not use login shell here, we don't need an external conda but rather the udocker installed by pixi.
+    shell_executable = ShellExecutable("bash", args=[], command_arg="-c")
 
     def get_within_cls(self) -> Optional[Type[EnvBase]]:
         return ContainerEnv
