@@ -1,7 +1,6 @@
 import subprocess
 import inspect
 import copy
-from io import BytesIO
 import importlib.metadata
 from itertools import chain
 import json
@@ -268,6 +267,12 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 return spec["pip"]
         return []
 
+    def _platforms(self) -> List[Platform]:
+        if self.within is not None:
+            return self._run_method("_platforms")
+
+        return [Platform.current(), Platform("noarch")]
+
     async def _package_records(self) -> List[RepoDataRecord]:
         if self._package_records_cache is None:
             assert isinstance(self.spec, EnvSpec)
@@ -302,6 +307,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                         specs=self.conda_specs,
                         # Virtual packages define the specifications of the environment
                         virtual_packages=VirtualPackage.detect(),
+                        platforms=self._platforms(),
                     )
                 )
         return self._package_records_cache
@@ -340,7 +346,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                             await f.write(chunk)
                     os.replace(tmp_cache_path, cache_path)
 
-    def run_method(self, name: str, *args: Any, **kwargs: Any) -> None:
+    def _run_method(self, name: str, *args: Any, **kwargs: Any) -> Any:
         assert self.within is not None
         # invoke this within the given environment
         # pickle the object into a string
@@ -369,7 +375,8 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         py_code = (
             "import snakemake_software_deployment_plugin_conda, pickle, sys, asyncio; "
             "env = pickle.load(sys.stdin.buffer); "
-        ) + run_code
+            f"print(pickle.dumps({run_code}))"
+        )
 
         # Ensure that this plugin is installed on-the-fly in the "within" environment.
         # This assumes that pip is present, which is the case for conda containers,
@@ -378,23 +385,24 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         cmd = (
             "(which pip || (echo 'ERROR: pip command not found, "
             "but must be present to use snakemake-software-deployment-plugin-conda "
-            "within another environment && exit 1)) && "
+            "within another environment' && exit 1)) && "
             f"pip install snakemake-software-deployment-plugin-conda=={__version__} && "
             f"python -c {shlex.quote(py_code)}"
         )
         try:
             # run the requested method on the pickled object inside of the "within" environment
-            self.run_cmd(
+            res = self.run_cmd(
                 cmd,
                 check=True,
                 input=pickled,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stderr=subprocess.PIPE,
             )
         except subprocess.CalledProcessError as e:
             raise WorkflowError(
-                f"Failed to deploy within parent environment {self.within.spec}: {e.stdout.decode()}"
+                f"Failed to deploy within parent environment {self.within.spec}: {e.stderr.decode()}"
             ) from e
+        return pickle.load(res.stdout)
 
     async def deploy(self) -> None:
         # Remove method if not deployable!
@@ -407,9 +415,6 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         # module).
         assert self.spec.envfile is not None
 
-        if self.within is not None:
-            return self.run_method("deploy")
-
         records = await self._package_records()
 
         await install(
@@ -420,38 +425,43 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
 
         pypi_specs = [spec.replace(" ", "") for spec in self.pypi_specs]
         if pypi_specs:
+            self._deploy_pypi_specs(pypi_specs)
 
-            def raise_python_error(errmsg: str):
-                raise WorkflowError(
-                    f"No working python found in the given environment {self.spec}. "
-                    "Unable to install additional pypi packages. Please add python as "
-                    f"a conda package to the environment. {errmsg}"
-                )
+    def _deploy_pypi_specs(self, pypi_specs: List[str]) -> None:
+        if self.within is not None:
+            return self._run_method("_deploy_pypi_specs", pypi_specs)
 
-            python_path = self.deployment_path / "bin" / "python"
-            if not python_path.exists():
-                raise_python_error(
-                    f"No python found under {self.deployment_path}. If your environment contains pypi packages, please add python to the non-pypi packages list."
-                )
+        def raise_python_error(errmsg: str):
+            raise WorkflowError(
+                f"No working python found in the given environment {self.spec}. "
+                "Unable to install additional pypi packages. Please add python as "
+                f"a conda package to the environment. {errmsg}"
+            )
 
-            try:
-                sp.run(
-                    [
-                        "uv",
-                        "pip",
-                        "install",
-                        "--prefix",
-                        str(self.deployment_path),
-                        "--python",
-                        python_path,
-                        *pypi_specs,
-                    ],
-                    check=True,
-                    stdout=sp.PIPE,
-                    stderr=sp.PIPE,
-                )
-            except sp.CalledProcessError as e:
-                raise WorkflowError(f"Failed to install pypi packages: {e.stderr}", e)
+        python_path = self.deployment_path / "bin" / "python"
+        if not python_path.exists():
+            raise_python_error(
+                f"No python found under {self.deployment_path}. If your environment contains pypi packages, please add python to the non-pypi packages list."
+            )
+
+        try:
+            sp.run(
+                [
+                    "uv",
+                    "pip",
+                    "install",
+                    "--prefix",
+                    str(self.deployment_path),
+                    "--python",
+                    python_path,
+                    *pypi_specs,
+                ],
+                check=True,
+                stdout=sp.PIPE,
+                stderr=sp.PIPE,
+            )
+        except sp.CalledProcessError as e:
+            raise WorkflowError(f"Failed to install pypi packages: {e.stderr}", e)
 
     def is_deployment_path_portable(self) -> bool:
         # Deployment isn't portable because RPATHs are hardcoded as absolute paths by
