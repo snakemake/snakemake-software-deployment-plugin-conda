@@ -87,9 +87,20 @@ class TestWithinContainer(Test):
         return ContainerEnvSpec("condaforge/miniforge3:26.1.0-0")
 
     def get_within_settings(self) -> Optional[SoftwareDeploymentSettingsBase]:
-        return ContainerSettings(
-            mountpoints=["/tmp:/tmp"],
-        )
+        return ContainerSettings()
+
+
+class TestPypiWithinContainer(TestPypi):
+    __test__ = True
+
+    def get_within_cls(self) -> Optional[Type[EnvBase]]:
+        return ContainerEnv
+
+    def get_within_spec(self) -> Optional[EnvSpecBase]:
+        return ContainerEnvSpec("condaforge/miniforge3:26.1.0-0")
+
+    def get_within_settings(self) -> Optional[SoftwareDeploymentSettingsBase]:
+        return ContainerSettings()
 
 
 class TestNamed(Test):

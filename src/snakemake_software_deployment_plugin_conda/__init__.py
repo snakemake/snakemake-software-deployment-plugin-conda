@@ -1,5 +1,6 @@
 import subprocess
 import inspect
+import tempfile
 import copy
 import importlib.metadata
 from itertools import chain
@@ -269,7 +270,12 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
 
     def _platforms(self) -> List[Platform]:
         if self.within is not None:
-            return self._run_method("_platforms")
+            return [
+                Platform(name)
+                for name in self._run_method(
+                    "_platforms", mod_pattern="list(map(str, {value}))"
+                )
+            ]
 
         return [Platform.current(), Platform("noarch")]
 
@@ -346,7 +352,9 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                             await f.write(chunk)
                     os.replace(tmp_cache_path, cache_path)
 
-    def _run_method(self, name: str, *args: Any, **kwargs: Any) -> Any:
+    def _run_method(
+        self, name: str, *args: Any, mod_pattern: Optional[str] = None, **kwargs: Any
+    ) -> Any:
         assert self.within is not None
         # invoke this within the given environment
         # pickle the object into a string
@@ -360,6 +368,8 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         # Unset within such that really only this env is instantiated within.
         # The hash will remain unchanged, as it is already computed and cached.
         self_copy.within = None
+        # Unset _package_records_cache since it cannot be pickled.
+        self_copy._package_records_cache = None
         assert self_copy._managed_deployment_hash_store is not None
 
         # pickle the environment object for reuse inside of the "within" environment
@@ -372,10 +382,17 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         if inspect.iscoroutinefunction(getattr(self, name)):
             run_code = f"asyncio.run({run_code})"
 
+        if mod_pattern is not None:
+            run_code = mod_pattern.format(value=run_code)
+
+        fileobj, outfile = tempfile.mkstemp(suffix=f".{name}.pickle")
+
         py_code = (
             "import snakemake_software_deployment_plugin_conda, pickle, sys, asyncio; "
             "env = pickle.load(sys.stdin.buffer); "
-            f"print(pickle.dumps({run_code}))"
+            f"outfile = open({outfile!r}, 'wb'); "
+            f"pickle.dump({run_code}, outfile); "
+            "outfile.close()"
         )
 
         # Ensure that this plugin is installed on-the-fly in the "within" environment.
@@ -383,26 +400,30 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         # such that it this approach is backwards compatible even though the plugin
         # uses rattler instead of the conda package manager.
         cmd = (
-            "(which pip || (echo 'ERROR: pip command not found, "
+            "(which pip >&2 || (echo 'ERROR: pip command not found, "
             "but must be present to use snakemake-software-deployment-plugin-conda "
-            "within another environment' && exit 1)) && "
-            f"pip install snakemake-software-deployment-plugin-conda=={__version__} && "
+            "within another environment' >&2 && exit 1)) && "
+            f"pip install snakemake-software-deployment-plugin-conda=={__version__} >&2 && "
             f"python -c {shlex.quote(py_code)}"
         )
         try:
             # run the requested method on the pickled object inside of the "within" environment
-            res = self.run_cmd(
+            self.run_cmd(
                 cmd,
                 check=True,
                 input=pickled,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
+            with open(outfile, "rb") as out:
+                return pickle.load(out)
         except subprocess.CalledProcessError as e:
             raise WorkflowError(
                 f"Failed to deploy within parent environment {self.within.spec}: {e.stderr.decode()}"
             ) from e
-        return pickle.load(res.stdout)
+        finally:
+            if os.path.exists(outfile):
+                os.remove(outfile)
 
     async def deploy(self) -> None:
         # Remove method if not deployable!
