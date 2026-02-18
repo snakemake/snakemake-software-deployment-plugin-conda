@@ -19,7 +19,6 @@ dependencies = [
 
 [tool.pixi.pypi-dependencies]
 snakemake-software-deployment-plugin-conda = { path = ".", editable = true }
-snakemake-interface-software-deployment-plugins = { path = "../snakemake-interface-software-deployment-plugins", editable = true }
 
 [project.urls]
 repository = "https://github.com/snakemake/snakemake-software-deployment-plugin-conda"
