@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.2...v0.3.3) (2026-02-18)
+
+
+### Bug Fixes
+
+* enable deployment within a surrounding environment (e.g. a container) ([#11](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/11)) ([f230e07](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/f230e079b3eebc6bb1162486e1ce923a16e1c4e3))
+
 ## [0.3.2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.1...v0.3.2) (2025-09-19)
 
 
