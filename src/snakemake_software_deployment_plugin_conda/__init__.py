@@ -375,19 +375,25 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         # such that it this approach is backwards compatible even though the plugin
         # uses rattler instead of the conda package manager.
         cmd = (
-            "(which pip && "
-            f"pip install snakemake-software-deployment-plugin-conda=={__version__} && "
-            f"python -c {shlex.quote(py_code)}) || echo 'ERROR: pip command not found, "
+            "(which pip || (echo 'ERROR: pip command not found, "
             "but must be present to use snakemake-software-deployment-plugin-conda "
-            "within another environment"
+            "within another environment && exit 1)) && "
+            f"pip install snakemake-software-deployment-plugin-conda=={__version__} && "
+            f"python -c {shlex.quote(py_code)})"
         )
         try:
             # run the requested method on the pickled object inside of the "within" environment
-            self.run_cmd(cmd, check=True, input=pickled, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            self.run_cmd(
+                cmd,
+                check=True,
+                input=pickled,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
         except subprocess.CalledProcessError as e:
-            raise WorkflowError(f"Failed to deploy within parent environment {self.within.spec}: {e.stdout.decode()}") from e
-
-
+            raise WorkflowError(
+                f"Failed to deploy within parent environment {self.within.spec}: {e.stdout.decode()}"
+            ) from e
 
     async def deploy(self) -> None:
         # Remove method if not deployable!
