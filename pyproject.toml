@@ -9,7 +9,7 @@ readme = "README.md"
 requires-python = ">=3.11,<4.0"
 dependencies = [
     "snakemake-interface-common (>=1.17.4,<2.0.0)",
-    "snakemake-interface-software-deployment-plugins (>=0.8.0,<1.0)",
+    "snakemake-interface-software-deployment-plugins (>=0.10.1,<1.0)",
     "py-rattler (>=0.12.0,<0.16.0)",
     "pyyaml (>=6.0.2,<7.0.0)",
     "uv (>=0.6.5,<0.7.0)",
@@ -28,7 +28,7 @@ documentation = "https://snakemake.github.io/snakemake-plugin-catalog/plugins/so
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.pixi.project]
+[tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["osx-arm64", "linux-64"]
 
@@ -40,10 +40,15 @@ publish = { features = ["publish"] }
 pytest = ">=8.3.5,<9"
 ruff = ">=0.10.0,<0.11"
 pytest-cov = ">=6.0.0,<7"
+pyrefly = ">=0.52.0,<0.53"
+
+[tool.pixi.feature.dev.pypi-dependencies]
+snakemake-software-deployment-plugin-container = ">=0.2.1,<1.0"
 
 [tool.pixi.feature.dev.tasks]
 format = "ruff format"
 lint = "ruff check"
+typecheck = "pyrefly check"
 qc = { depends-on = ["format", "lint"] }
 coverage-report = "coverage report -m"
 
@@ -73,4 +78,3 @@ build = { cmd = "python -m build", description = "Build the package into the dis
 check-build = { cmd = "python -m twine check dist/*", depends-on = [
   "build",
 ], description = "Check that the package can be uploaded" }
-

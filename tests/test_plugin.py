@@ -16,6 +16,9 @@ from snakemake_software_deployment_plugin_conda import (
     Env,
     EnvSpec,
 )
+from snakemake_software_deployment_plugin_container import Env as ContainerEnv
+from snakemake_software_deployment_plugin_container import EnvSpec as ContainerEnvSpec
+from snakemake_software_deployment_plugin_container import Settings as ContainerSettings
 
 
 # There can be multiple subclasses of SoftwareDeploymentProviderBase here.
@@ -51,8 +54,9 @@ class Test(TestSoftwareDeploymentBase):
         return "stress-ng --cpu 1 --timeout 1s"
 
 
-# TODO requires https://github.com/conda/rattler/pull/1206 to be released
 class TestPinned(Test):
+    __test__ = True
+
     def get_env_spec(self) -> EnvSpecBase:
         return EnvSpec(
             envfile=EnvSpecSourceFile(Path(__file__).parent / "test_env_pinned.yaml")
@@ -60,6 +64,8 @@ class TestPinned(Test):
 
 
 class TestPypi(Test):
+    __test__ = True
+
     def get_env_spec(self) -> EnvSpecBase:
         return EnvSpec(
             envfile=EnvSpecSourceFile(Path(__file__).parent / "test_env_pypi.yaml")
@@ -69,6 +75,21 @@ class TestPypi(Test):
         # Return a test command that should be executed within the environment
         # with exit code 0 (i.e. without error).
         return "which python; python -c 'import humanfriendly'"
+
+
+class TestWithinContainer(Test):
+    __test__ = True
+
+    def get_within_cls(self) -> Optional[Type[EnvBase]]:
+        return ContainerEnv
+
+    def get_within_spec(self) -> Optional[EnvSpecBase]:
+        return ContainerEnvSpec("condaforge/miniforge3:26.1.0-0")
+
+    def get_within_settings(self) -> Optional[SoftwareDeploymentSettingsBase]:
+        return ContainerSettings(
+            mountpoints=["/tmp:/tmp"],
+        )
 
 
 class TestNamed(Test):

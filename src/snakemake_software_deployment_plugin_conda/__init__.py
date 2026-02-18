@@ -1,12 +1,18 @@
+import subprocess
+import inspect
+import copy
+import importlib.metadata
 from itertools import chain
 import json
 import os
+import pickle
 import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 import subprocess as sp
+import shlex
 
 import httpx
 import yaml
@@ -34,6 +40,9 @@ from rattler.repo_data import RepoDataRecord, Gateway
 from snakemake_software_deployment_plugin_conda.pinfiles import (
     get_match_specs_from_conda_pinfile,
 )
+
+
+__version__ = importlib.metadata.version("snakemake-software-deployment-plugin-conda")
 
 
 PINFILE_SUFFIX = f".{Platform.current()}.pin.txt"
@@ -86,7 +95,6 @@ class EnvSpec(EnvSpecBase):
 
 
 class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
-    shell_executable: str
     spec: EnvSpec  # type: ignore
 
     # For compatibility with future changes, you should not overwrite the __init__
@@ -94,22 +102,8 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
     # futher stuff.
 
     def __post_init__(self):
-        self.gateway = Gateway()
         self._package_records_cache: Optional[List[RepoDataRecord]] = None
         self._envfile_content = None
-
-        shell_executable = self.shell_executable.name
-
-        if shell_executable == "bash":
-            self.rattler_shell = Shell.bash
-        elif shell_executable == "zsh":
-            self.rattler_shell = Shell.zsh
-        elif shell_executable == "xonsh":
-            self.rattler_shell = Shell.xonsh
-        elif shell_executable == "fish":
-            self.rattler_shell = Shell.fish
-        else:
-            raise WorkflowError(f"Unsupported shell executable: {shell_executable}")
 
     def is_cacheable(self) -> bool:
         return self.spec.envfile is not None
@@ -119,6 +113,21 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
 
     def is_deployable(self) -> bool:
         return self.spec.envfile is not None
+
+    @property
+    def rattler_shell(self) -> Shell:
+        shell_executable = self.shell_executable.name
+
+        if shell_executable == "bash":
+            return Shell.bash
+        elif shell_executable == "zsh":
+            return Shell.zsh
+        elif shell_executable == "xonsh":
+            return Shell.xonsh
+        elif shell_executable == "fish":
+            return Shell.fish
+        else:
+            raise WorkflowError(f"Unsupported shell executable: {shell_executable}")
 
     @EnvBase.once
     def conda_env_directories(self) -> Iterable[Path]:
@@ -258,6 +267,12 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 return spec["pip"]
         return []
 
+    def _platforms(self) -> List[Platform]:
+        if self.within is not None:
+            return self._run_method("_platforms")
+
+        return [Platform.current(), Platform("noarch")]
+
     async def _package_records(self) -> List[RepoDataRecord]:
         if self._package_records_cache is None:
             assert isinstance(self.spec, EnvSpec)
@@ -272,9 +287,10 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             )
 
             if pinfile.exists():
+                gateway = Gateway()
                 records = list(
                     chain.from_iterable(
-                        await self.gateway.query(
+                        await gateway.query(
                             channels=self.envfile_content["channels"],
                             platforms=[Platform.current()],
                             specs=list(get_match_specs_from_conda_pinfile(pinfile)),
@@ -291,6 +307,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                         specs=self.conda_specs,
                         # Virtual packages define the specifications of the environment
                         virtual_packages=VirtualPackage.detect(),
+                        platforms=self._platforms(),
                     )
                 )
         return self._package_records_cache
@@ -329,6 +346,64 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                             await f.write(chunk)
                     os.replace(tmp_cache_path, cache_path)
 
+    def _run_method(self, name: str, *args: Any, **kwargs: Any) -> Any:
+        assert self.within is not None
+        # invoke this within the given environment
+        # pickle the object into a string
+
+        # ensure that deployment_hash is calculated and cached such that
+        # the same hash is used inside of the "within" environment
+        self.deployment_hash()
+
+        # create a copy of the environment
+        self_copy = copy.copy(self)
+        # Unset within such that really only this env is instantiated within.
+        # The hash will remain unchanged, as it is already computed and cached.
+        self_copy.within = None
+        assert self_copy._managed_deployment_hash_store is not None
+
+        # pickle the environment object for reuse inside of the "within" environment
+        pickled = pickle.dumps(self_copy)
+        fmt_args = ",".join(map(repr, args))
+        if kwargs:
+            fmt_args += "," + ",".join(f"{kw}={arg!r}" for kw, arg in kwargs.items())
+
+        run_code = f"env.{name}({fmt_args})"
+        if inspect.iscoroutinefunction(getattr(self, name)):
+            run_code = f"asyncio.run({run_code})"
+
+        py_code = (
+            "import snakemake_software_deployment_plugin_conda, pickle, sys, asyncio; "
+            "env = pickle.load(sys.stdin.buffer); "
+            f"print(pickle.dumps({run_code}))"
+        )
+
+        # Ensure that this plugin is installed on-the-fly in the "within" environment.
+        # This assumes that pip is present, which is the case for conda containers,
+        # such that it this approach is backwards compatible even though the plugin
+        # uses rattler instead of the conda package manager.
+        cmd = (
+            "(which pip || (echo 'ERROR: pip command not found, "
+            "but must be present to use snakemake-software-deployment-plugin-conda "
+            "within another environment' && exit 1)) && "
+            f"pip install snakemake-software-deployment-plugin-conda=={__version__} && "
+            f"python -c {shlex.quote(py_code)}"
+        )
+        try:
+            # run the requested method on the pickled object inside of the "within" environment
+            res = self.run_cmd(
+                cmd,
+                check=True,
+                input=pickled,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        except subprocess.CalledProcessError as e:
+            raise WorkflowError(
+                f"Failed to deploy within parent environment {self.within.spec}: {e.stderr.decode()}"
+            ) from e
+        return pickle.load(res.stdout)
+
     async def deploy(self) -> None:
         # Remove method if not deployable!
         # Deploy the environment to self.deployment_path, using self.spec
@@ -350,38 +425,43 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
 
         pypi_specs = [spec.replace(" ", "") for spec in self.pypi_specs]
         if pypi_specs:
+            self._deploy_pypi_specs(pypi_specs)
 
-            def raise_python_error(errmsg: str):
-                raise WorkflowError(
-                    f"No working python found in the given environment {self.spec}. "
-                    "Unable to install additional pypi packages. Please add python as "
-                    f"a conda package to the environment. {errmsg}"
-                )
+    def _deploy_pypi_specs(self, pypi_specs: List[str]) -> None:
+        if self.within is not None:
+            return self._run_method("_deploy_pypi_specs", pypi_specs)
 
-            python_path = self.deployment_path / "bin" / "python"
-            if not python_path.exists():
-                raise_python_error(
-                    f"No python found under {self.deployment_path}. If your environment contains pypi packages, please add python to the non-pypi packages list."
-                )
+        def raise_python_error(errmsg: str):
+            raise WorkflowError(
+                f"No working python found in the given environment {self.spec}. "
+                "Unable to install additional pypi packages. Please add python as "
+                f"a conda package to the environment. {errmsg}"
+            )
 
-            try:
-                sp.run(
-                    [
-                        "uv",
-                        "pip",
-                        "install",
-                        "--prefix",
-                        str(self.deployment_path),
-                        "--python",
-                        python_path,
-                        *pypi_specs,
-                    ],
-                    check=True,
-                    stdout=sp.PIPE,
-                    stderr=sp.PIPE,
-                )
-            except sp.CalledProcessError as e:
-                raise WorkflowError(f"Failed to install pypi packages: {e.stderr}", e)
+        python_path = self.deployment_path / "bin" / "python"
+        if not python_path.exists():
+            raise_python_error(
+                f"No python found under {self.deployment_path}. If your environment contains pypi packages, please add python to the non-pypi packages list."
+            )
+
+        try:
+            sp.run(
+                [
+                    "uv",
+                    "pip",
+                    "install",
+                    "--prefix",
+                    str(self.deployment_path),
+                    "--python",
+                    python_path,
+                    *pypi_specs,
+                ],
+                check=True,
+                stdout=sp.PIPE,
+                stderr=sp.PIPE,
+            )
+        except sp.CalledProcessError as e:
+            raise WorkflowError(f"Failed to install pypi packages: {e.stderr}", e)
 
     def is_deployment_path_portable(self) -> bool:
         # Deployment isn't portable because RPATHs are hardcoded as absolute paths by
