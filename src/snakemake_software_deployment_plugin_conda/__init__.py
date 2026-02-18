@@ -341,6 +341,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                     os.replace(tmp_cache_path, cache_path)
 
     def run_method(self, name: str, *args: Any, **kwargs: Any) -> None:
+        assert self.within is not None
         # invoke this within the given environment
         # pickle the object into a string
 
@@ -357,7 +358,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
 
         # pickle the environment object for reuse inside of the "within" environment
         pickled = pickle.dumps(self_copy)
-        fmt_args = ",".join(args)
+        fmt_args = ",".join(map(repr, args))
         if kwargs:
             fmt_args += "," + ",".join(f"{kw}={arg!r}" for kw, arg in kwargs.items())
 
@@ -367,7 +368,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
 
         py_code = (
             "import snakemake_software_deployment_plugin_conda, pickle, sys, asyncio; "
-            f"env = pickle.load(sys.stdin.buffer); "
+            "env = pickle.load(sys.stdin.buffer); "
         ) + run_code
 
         # Ensure that this plugin is installed on-the-fly in the "within" environment.
@@ -379,7 +380,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             "but must be present to use snakemake-software-deployment-plugin-conda "
             "within another environment && exit 1)) && "
             f"pip install snakemake-software-deployment-plugin-conda=={__version__} && "
-            f"python -c {shlex.quote(py_code)})"
+            f"python -c {shlex.quote(py_code)}"
         )
         try:
             # run the requested method on the pickled object inside of the "within" environment
