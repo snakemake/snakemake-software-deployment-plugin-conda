@@ -128,7 +128,10 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         elif shell_executable == "fish":
             return Shell.fish
         else:
-            raise WorkflowError(f"Unsupported shell executable: {shell_executable}")
+            raise WorkflowError(
+                "Unsupported shell executable for "
+                f"snakemake-software-deployment-plugin-conda: {shell_executable}"
+            )
 
     @EnvBase.once
     def conda_env_directories(self) -> Iterable[Path]:
