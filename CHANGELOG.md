@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.5](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.4...v0.3.5) (2026-02-19)
+
+
+### Bug Fixes
+
+* improved error message ([4ff53da](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/4ff53da903cd84750507c568e0f858898f530308))
+
 ## [0.3.4](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.3...v0.3.4) (2026-02-18)
 
 
