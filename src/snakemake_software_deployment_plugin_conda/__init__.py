@@ -96,7 +96,7 @@ class EnvSpec(EnvSpecBase):
 
 
 class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
-    spec: EnvSpec  # type: ignore
+    spec: EnvSpec
 
     # For compatibility with future changes, you should not overwrite the __init__
     # method. Instead, use __post_init__ to set additional attributes and initialize
@@ -388,7 +388,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         if mod_pattern is not None:
             run_code = mod_pattern.format(value=run_code)
 
-        fileobj, outfile = tempfile.mkstemp(suffix=f".{name}.pickle")
+        fileobj, outfile = tempfile.mkstemp(suffix=f".{name}.pickle", dir=self.tempdir)
 
         py_code = (
             "import snakemake_software_deployment_plugin_conda, pickle, sys, asyncio; "
