@@ -218,6 +218,9 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         {cmd}
         """
 
+    def contains_executable(self, executable: str) -> bool:
+        return (self.env_prefix() / "bin" / executable).exists()
+
     def record_hash(self, hash_object) -> None:
         if self.spec.envfile is not None:
             hash_object.update(
