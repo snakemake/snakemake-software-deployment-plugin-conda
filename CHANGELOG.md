@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.5...v0.4.0) (2026-02-27)
+
+
+### Features
+
+* implement test for executable to be contained in env ([b584db7](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/b584db72b51f618ff5cb6aa3f7ce68cb8f345f18))
+
+
+### Bug Fixes
+
+* adapt to latest interface ([a971374](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/a97137463bb3dfec6a9f14f48f9ccdb1072d835b))
+
 ## [0.3.5](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.4...v0.3.5) (2026-02-19)
 
 
