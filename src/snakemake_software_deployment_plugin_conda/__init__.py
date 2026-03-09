@@ -288,6 +288,21 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
 
         return [Platform.current(), Platform("noarch")]
 
+    def channels(self, platforms: List[Platform]) -> List[str]:
+        is_win = any(p.is_windows for p in platforms)
+        channels = self.envfile_content.get("channels", [])
+        try:
+            defaults_idx = channels.index("defaults")
+            channels.remove("defaults")
+            channels.insert(defaults_idx, "main")
+            channels.insert(defaults_idx + 1, "r")
+            # also insert msys2 if on windows platform
+            if is_win:
+                channels.insert(defaults_idx + 2, "msys2")
+        except ValueError:
+            pass
+        return channels
+
     async def _package_records(self) -> List[RepoDataRecord]:
         if self._package_records_cache is None:
             assert isinstance(self.spec, EnvSpec)
@@ -301,13 +316,16 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 else self.pinfile
             )
 
+            platforms = self._platforms()
+            channels = self.channels(platforms)
+
             if pinfile.exists():
                 gateway = Gateway()
                 records = list(
                     chain.from_iterable(
                         await gateway.query(
-                            channels=self.envfile_content["channels"],
-                            platforms=[Platform.current()],
+                            channels=channels,
+                            platforms=platforms,
                             specs=list(get_match_specs_from_conda_pinfile(pinfile)),
                             recursive=False,
                         )
@@ -317,12 +335,12 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             else:
                 self._package_records_cache = list(
                     await solve(
-                        channels=self.envfile_content["channels"],
+                        channels=channels,
                         # The specs to solve for
                         specs=self.conda_specs,
                         # Virtual packages define the specifications of the environment
                         virtual_packages=VirtualPackage.detect(),
-                        platforms=self._platforms(),
+                        platforms=platforms,
                     )
                 )
         return self._package_records_cache
