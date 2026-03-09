@@ -339,11 +339,13 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
     async def get_cache_assets(self) -> Iterable[str]:
         if self._cache_assets is None:
             self._cache_assets = {
-                record_to_asset_name(record): record for record in await self._package_records()
+                record_to_asset_name(record): record
+                for record in await self._package_records()
             }
         return self._cache_assets.keys()
 
     async def cache_asset(self, asset: str, to_path: Path) -> None:
+        assert self._cache_assets is not None, "bug: get_cache_assets must be called before cache_asset"
         record = self._cache_assets[asset]
 
         async with httpx.AsyncClient() as http_client:
