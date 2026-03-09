@@ -29,6 +29,10 @@ from snakemake_software_deployment_plugin_container import Settings as Container
 class Test(TestSoftwareDeploymentBase):
     __test__ = True  # activate automatic testing
 
+    def get_contained_executable(self) -> str:
+        # just provide something that is available inside of the container
+        return "stress-ng"
+
     def get_env_spec(self) -> EnvSpecBase:
         return EnvSpec(
             envfile=EnvSpecSourceFile(Path(__file__).parent / "test_env.yaml")
