@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.4.0...v0.4.1) (2026-03-09)
+
+
+### Bug Fixes
+
+* handle defaults channel ([a314b71](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/a314b7138ff104a34b9424360ccd3162cdb0294f))
+* return list of external env directories instead of iterable (for caching) ([602530d](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/602530d8a58a282726edb4fb4ccf4277895a0407))
+
 ## [0.4.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.5...v0.4.0) (2026-03-09)
 
 
