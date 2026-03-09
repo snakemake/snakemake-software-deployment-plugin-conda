@@ -135,9 +135,10 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             )
 
     @EnvBase.once
-    def conda_env_directories(self) -> Iterable[Path]:
+    def conda_env_directories(self) -> List[Path]:
         errors = {}
         success = False
+        dirs = []
         for client in ("micromamba", "conda", "mamba"):
             try:
                 output = self.run_cmd(
@@ -162,12 +163,13 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 )
                 continue
             success = True
-            yield from (Path(d) for d in env_dirs)
+            dirs.extend(Path(d) for d in env_dirs)
         if errors and not success:
             raise WorkflowError(
                 "Could not determine conda environment directories. Tried the following clients:\n"
                 + "\n".join(f"{client}: {error}" for client, error in errors.items())
             )
+        return dirs
 
     def env_prefix(self) -> Path:
         if self.spec.envfile is not None:
