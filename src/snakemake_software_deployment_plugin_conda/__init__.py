@@ -54,7 +54,7 @@ common_settings = CommonSettings(
 )
 
 
-@dataclass
+@dataclass(eq=False)
 class EnvSpec(EnvSpecBase):
     envfile: Optional[EnvSpecSourceFile] = None
     directory: Optional[Path] = None
@@ -105,6 +105,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
     def __post_init__(self):
         self._package_records_cache: Optional[List[RepoDataRecord]] = None
         self._envfile_content = None
+        self._cache_assets = None
 
     def is_cacheable(self) -> bool:
         return self.spec.envfile is not None
@@ -336,27 +337,21 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 await f.write(f"{record.url}\n")
 
     async def get_cache_assets(self) -> Iterable[str]:
-        return (
-            record_to_asset_name(record) for record in await self._package_records()
-        )
+        if self._cache_assets is None:
+            self._cache_assets = {
+                record_to_asset_name(record): record for record in await self._package_records()
+            }
+        return self._cache_assets.keys()
 
-    async def cache_assets(self) -> None:
-        for record in await self._package_records():
-            pkg_name = record_to_asset_name(record)
-            async with httpx.AsyncClient() as http_client:
-                response = await http_client.get(record.url)
-                response.raise_for_status()
-                # The naming scheme used here follows the same pattern as rsync.
-                # This way, we benefit from rsync specific optimizations in network
-                # filtesystems like GlusterFS (see
-                # https://developers.redhat.com/blog/2018/08/14/improving-rsync-performance-with-glusterfs)
-                tmp_cache_path = self.cache_path / f".{pkg_name}.part"
-                cache_path = self.cache_path / pkg_name
-                if not cache_path.exists():
-                    async with aiofiles.open(tmp_cache_path, "wb") as f:
-                        async for chunk in response.aiter_bytes(chunk_size=1024):
-                            await f.write(chunk)
-                    os.replace(tmp_cache_path, cache_path)
+    async def cache_asset(self, asset: str, to_path: Path) -> None:
+        record = self._cache_assets[asset]
+
+        async with httpx.AsyncClient() as http_client:
+            response = await http_client.get(record.url)
+            response.raise_for_status()
+            async with aiofiles.open(to_path, "wb") as f:
+                async for chunk in response.aiter_bytes(chunk_size=1024):
+                    await f.write(chunk)
 
     def _run_method(
         self, name: str, *args: Any, mod_pattern: Optional[str] = None, **kwargs: Any
@@ -391,7 +386,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         if mod_pattern is not None:
             run_code = mod_pattern.format(value=run_code)
 
-        fileobj, outfile = tempfile.mkstemp(suffix=f".{name}.pickle", dir=self.tempdir)
+        _, outfile = tempfile.mkstemp(suffix=f".{name}.pickle", dir=self.tempdir)
 
         py_code = (
             "import snakemake_software_deployment_plugin_conda, pickle, sys, asyncio; "
