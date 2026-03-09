@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.5...v0.4.0) (2026-03-09)
+
+
+### Features
+
+* implement test for executable to be contained in env ([b584db7](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/b584db72b51f618ff5cb6aa3f7ce68cb8f345f18))
+
+
+### Bug Fixes
+
+* adapt to latest interface ([a971374](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/a97137463bb3dfec6a9f14f48f9ccdb1072d835b))
+* assert tipe for cache_asset ([bb1d560](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/bb1d560f1edbe8c7ccc5a438a384a6fc01096b8f))
+* use pypi-only dependencies ([20f8c4a](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/20f8c4af484720c263ab86af789a840c98dde947))
+* various small fixes ([d55d381](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/d55d381970f94abd5198221a130ba69342670f76))
+
 ## [0.3.5](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.4...v0.3.5) (2026-02-19)
 
 
