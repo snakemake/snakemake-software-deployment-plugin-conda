@@ -398,6 +398,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         self_copy.within = None
         # Unset _package_records_cache since it cannot be pickled.
         self_copy._package_records_cache = None
+        self_copy._cache_assets = None
         assert self_copy._managed_deployment_hash_store is not None
 
         # pickle the environment object for reuse inside of the "within" environment
@@ -419,7 +420,8 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             "import snakemake_software_deployment_plugin_conda, pickle, sys, asyncio; "
             "env = pickle.load(sys.stdin.buffer); "
             f"outfile = open({outfile!r}, 'wb'); "
-            f"pickle.dump({run_code}, outfile); "
+            f"output = {run_code}; "
+            f"pickle.dump(output, outfile); "
             "outfile.close()"
         )
 
