@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.4.2...v0.5.0) (2026-03-10)
+
+
+### Features
+
+* containerization support ([abf96d1](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/abf96d1b1f719b879f40d295b7f5c3b051de8064))
+
 ## [0.4.2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.4.1...v0.4.2) (2026-03-10)
 
 
