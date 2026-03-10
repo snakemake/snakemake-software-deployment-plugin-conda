@@ -106,15 +106,25 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         self._package_records_cache: Optional[List[RepoDataRecord]] = None
         self._envfile_content = None
         self._cache_assets = None
+        self._containerized_path = None
+
+    @property
+    def containerized_path(self) -> Optional[Path]:
+        return self._containerized_path
+
+    @containerized_path.setter
+    def containerized_path(self, value: Optional[Path]) -> None:
+        self._containerized_path = value
+        self.clear_hashes()
 
     def is_cacheable(self) -> bool:
-        return self.spec.envfile is not None
+        return self.spec.envfile is not None and self.containerized_path is None
 
     def is_pinnable(self) -> bool:
-        return self.spec.envfile is not None
+        return self.spec.envfile is not None and self.containerized_path is None
 
     def is_deployable(self) -> bool:
-        return self.spec.envfile is not None
+        return self.spec.envfile is not None and self.containerized_path is None
 
     @property
     def rattler_shell(self) -> Shell:
@@ -219,16 +229,19 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             activation_variables=ActivationVariables(None, sys.path),
             shell=self.rattler_shell,
         )
-        return f"""
-        {act_obj.script}
-        {cmd}
-        """
+        act = act_obj.script.strip().replace("\n", "; ")
+        return f"{act}; {cmd}"
 
     def contains_executable(self, executable: str) -> bool:
         return (self.env_prefix() / "bin" / executable).exists()
 
+    def hash_include_within(self) -> bool:
+        return self.containerized_path is None
+
     def record_hash(self, hash_object) -> None:
         if self.spec.envfile is not None:
+            # TODO add deploy script content (and support deploy script in general!)
+            # TODO add pinfile content
             hash_object.update(
                 json.dumps(self.envfile_content, sort_keys=True).encode()
             )
@@ -516,8 +529,14 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
 
     def is_deployment_path_portable(self) -> bool:
         # Deployment isn't portable because RPATHs are hardcoded as absolute paths by
-        # rattler.
-        return False
+        # rattler. The only exception is if the env is inside a snakemake
+        # containerization container (there, the path is fixed and cannot be moved
+        # around).
+        return self.containerized_path is not None
+
+    @property
+    def deployment_path(self) -> Path:
+        return self.containerized_path or super().deployment_path
 
     def remove(self) -> None:
         # Remove method if not deployable!
