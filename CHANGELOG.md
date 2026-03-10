@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.4.1...v0.4.2) (2026-03-10)
+
+
+### Bug Fixes
+
+* handle defaults channel ([a314b71](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/a314b7138ff104a34b9424360ccd3162cdb0294f))
+* pass absolute path to rattler activation function ([3b4288d](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/3b4288dc9c67081db654b9048452361da9403186))
+* use latest container plugin ([e1dd5b7](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/e1dd5b7ede7a90210fa70a99651cc1ec2d829cd6))
+
 ## [0.4.1](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.4.0...v0.4.1) (2026-03-09)
 
 
