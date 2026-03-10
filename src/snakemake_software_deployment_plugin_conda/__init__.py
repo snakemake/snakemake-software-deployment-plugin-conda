@@ -211,8 +211,11 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
     def decorate_shellcmd(self, cmd: str) -> str:
         # Decorate given shell command such that it runs within the environment.
 
+        # Pass an absolute path to the environment prefix.
+        # This is important to ensure that processes within the environment that
+        # change the working directory can still properly resolve the PATH.
         act_obj = activate(
-            prefix=self.env_prefix(),
+            prefix=self.env_prefix().absolute(),
             activation_variables=ActivationVariables(None, sys.path),
             shell=self.rattler_shell,
         )
