@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.5.1...v0.5.2) (2026-06-02)
+
+
+### Bug Fixes
+
+* properly handle non-local pinfiles ([#23](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/23)) ([ea2b1c2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/ea2b1c28b758f8e97f8e5a2c27b5a61e8e3ededa))
+
 ## [0.5.1](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.5.0...v0.5.1) (2026-06-02)
 
 
