@@ -340,7 +340,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 records = list(
                     chain.from_iterable(
                         await gateway.query(
-                            channels=channels,
+                            sources=channels,
                             platforms=platforms,
                             specs=list(get_match_specs_from_conda_pinfile(pinfile)),
                             recursive=False,
