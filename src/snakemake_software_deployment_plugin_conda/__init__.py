@@ -67,9 +67,9 @@ class EnvSpec(EnvSpecBase):
                 "Exactly one of envfile, name, or directory must be set."
             )
 
-        if self.envfile is not None:
-            self.pinfile = EnvSpecSourceFile(
-                Path(self.envfile.path_or_uri).with_suffix(PINFILE_SUFFIX)
+        if self.envfile is not None and self.pinfile is None:
+            self.pinfile = self.envfile.replace_suffix(
+                [".yaml", ".yml"], PINFILE_SUFFIX
             )
 
     @classmethod
