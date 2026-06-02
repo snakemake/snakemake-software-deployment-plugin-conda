@@ -68,7 +68,9 @@ class EnvSpec(EnvSpecBase):
             )
 
         if self.envfile is not None and self.pinfile is None:
-            self.pinfile = self.envfile.replace_suffix([".yaml", ".yml"], PINFILE_SUFFIX)
+            self.pinfile = self.envfile.replace_suffix(
+                [".yaml", ".yml"], PINFILE_SUFFIX
+            )
 
     @classmethod
     def identity_attributes(cls) -> Iterable[str]:
