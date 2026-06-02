@@ -340,7 +340,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 records = list(
                     chain.from_iterable(
                         await gateway.query(
-                            channels=channels,
+                            sources=channels,
                             platforms=platforms,
                             specs=list(get_match_specs_from_conda_pinfile(pinfile)),
                             recursive=False,
@@ -351,7 +351,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             else:
                 self._package_records_cache = list(
                     await solve(
-                        channels=channels,
+                        sources=channels,
                         # The specs to solve for
                         specs=self.conda_specs,
                         # Virtual packages define the specifications of the environment
