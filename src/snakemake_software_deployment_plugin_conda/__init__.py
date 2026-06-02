@@ -351,7 +351,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             else:
                 self._package_records_cache = list(
                     await solve(
-                        channels=channels,
+                        sources=channels,
                         # The specs to solve for
                         specs=self.conda_specs,
                         # Virtual packages define the specifications of the environment
