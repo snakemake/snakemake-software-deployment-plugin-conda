@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.3](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.5.2...v0.5.3) (2026-06-22)
+
+
+### Performance Improvements
+
+* raise py-rattler dependency ([cdd66a0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/cdd66a042d60c5743c774eb5d04f19e19688cdea))
+
 ## [0.5.2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.5.1...v0.5.2) (2026-06-02)
 
 
