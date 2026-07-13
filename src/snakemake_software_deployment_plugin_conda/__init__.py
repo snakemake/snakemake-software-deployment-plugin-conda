@@ -47,6 +47,7 @@ __version__ = importlib.metadata.version("snakemake-software-deployment-plugin-c
 
 
 PINFILE_SUFFIX = f".{Platform.current()}.pin.txt"
+POST_DEPLOY_SUFFIX: str = ".post-deploy.sh"
 
 
 common_settings = CommonSettings(
@@ -60,6 +61,7 @@ class EnvSpec(EnvSpecBase):
     directory: Optional[Path] = None
     name: Optional[str] = None
     pinfile: Optional[EnvSpecSourceFile] = None
+    post_deploy_script: Optional[EnvSpecSourceFile] = None
 
     def __post_init__(self):
         if sum(x is not None for x in (self.envfile, self.name, self.directory)) != 1:
@@ -67,9 +69,13 @@ class EnvSpec(EnvSpecBase):
                 "Exactly one of envfile, name, or directory must be set."
             )
 
-        if self.envfile is not None and self.pinfile is None:
-            self.pinfile = self.envfile.replace_suffix(
-                [".yaml", ".yml"], PINFILE_SUFFIX
+        if self.envfile is not None:
+            if self.pinfile is None:
+                self.pinfile = self.envfile.replace_suffix(
+                    [".yaml", ".yml"], PINFILE_SUFFIX
+                )
+            self.post_deploy_script = self.envfile.replace_suffix(
+                [".yaml", ".yml"], POST_DEPLOY_SUFFIX
             )
 
     @classmethod
@@ -84,6 +90,7 @@ class EnvSpec(EnvSpecBase):
         # attributes that represent paths
         yield "envfile"
         yield "pinfile"
+        yield "post_deploy_script"
 
     def __str__(self) -> str:
         if self.envfile is not None:
@@ -245,6 +252,13 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             hash_object.update(
                 json.dumps(self.envfile_content, sort_keys=True).encode()
             )
+            for aux_file in (
+                self.spec.post_deploy_script.cached,
+                self.spec.pinfile.cached,
+            ):
+                if aux_file.exists():
+                    with open(aux_file, "rb") as content:
+                        hash_object.update(content.read())
         elif self.spec.directory is not None:
             hash_object.update(str(self.spec.directory).encode())
         else:
@@ -485,11 +499,27 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             records=records,
             target_prefix=self.deployment_path,
             cache_dir=self.cache_path,
+            show_progress=False,
         )
 
         pypi_specs = [spec.replace(" ", "") for spec in self.pypi_specs]
         if pypi_specs:
             self._deploy_pypi_specs(pypi_specs)
+
+        if self.spec.post_deploy_script.cached.exists():
+            # run post deploy script with activated env
+            try:
+                self.run_cmd(
+                    self.decorate_shellcmd(f"sh {self.spec.post_deploy_script.cached}"),
+                    check=True,
+                    stdout=sp.PIPE,
+                    stderr=sp.STDOUT,
+                )
+            except sp.CalledProcessError as e:
+                raise WorkflowError(
+                    "Failed to run post-deploy script "
+                    f"{self.spec.post_deploy_script.path_or_uri}: {e.stdout.decode()}"
+                )
 
     def _deploy_pypi_specs(self, pypi_specs: List[str]) -> None:
         if self.within is not None:

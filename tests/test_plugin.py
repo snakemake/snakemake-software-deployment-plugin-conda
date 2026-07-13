@@ -59,6 +59,23 @@ class Test(TestSoftwareDeploymentBase):
         return "stress-ng --cpu 1 --timeout 1s"
 
 
+class TestPostDeploy(Test):
+    __test__ = True
+
+    def get_env_spec(self) -> EnvSpecBase:
+        return EnvSpec(
+            envfile=EnvSpecSourceFile(
+                Path(__file__).parent / "test_env_post_deploy.yaml"
+            )
+        )
+
+    def get_test_cmd(self) -> str:
+        # Return a test command that should be executed within the environment
+        # with exit code 0 (i.e. without error).
+        cmd = super().get_test_cmd()
+        return f"{cmd} && test -e post_deploy_success.txt && rm post_deploy_success.txt"
+
+
 class TestPinned(Test):
     __test__ = True
 
