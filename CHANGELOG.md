@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.5.3...v0.6.0) (2026-07-13)
+
+
+### Features
+
+* support for post-deploy.sh scripts ([#26](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/26)) ([75cea90](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/75cea901019236d881460277aba896595bba8e91))
+
 ## [0.5.3](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.5.2...v0.5.3) (2026-06-22)
 
 
