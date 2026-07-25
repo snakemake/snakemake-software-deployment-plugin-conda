@@ -137,7 +137,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
     def rattler_shell(self) -> Shell:
         shell_executable = self.shell_executable.name
 
-        if shell_executable == "bash":
+        if shell_executable in ("bash", "dash", "sh", "ksh", "brush"):
             return Shell.bash
         elif shell_executable == "zsh":
             return Shell.zsh

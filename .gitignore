@@ -164,3 +164,4 @@ pixi.lock
 /.cache
 /.ruff_cache
 coverage-report
+.vscode/settings.json
