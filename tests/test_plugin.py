@@ -136,6 +136,15 @@ class TestWithinContainerApptainer(TestWithinContainer):
 
     __test__ = True
 
+    def _get_env(self, tmp_path):
+        # Reuse the base construction, then attach spec.within exactly like
+        # snakemake.deployment.SoftwareDeploymentManager.get_env does.
+        env = super()._get_env(tmp_path)
+        within_spec = self.get_within_spec()
+        assert within_spec is not None
+        env.spec.within = within_spec
+        return env
+
     def get_within_spec(self):
         return ContainerEnvSpec("condaforge/miniforge3:26.3.2-3")
 
