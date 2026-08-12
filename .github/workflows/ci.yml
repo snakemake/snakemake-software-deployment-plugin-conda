@@ -51,6 +51,12 @@ jobs:
         with:
           channels: conda-forge,nodefaults
 
+      - name: Setup Apptainer
+        if: runner.os == 'Linux'
+        uses: eWaterCycle/setup-apptainer@v2
+        with:
+          apptainer-version: 1.5.3
+
       - name: Deploy external test env
         shell: bash -el {0}
         run: |
