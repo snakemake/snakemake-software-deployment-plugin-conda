@@ -42,7 +42,6 @@ from snakemake_software_deployment_plugin_conda.pinfiles import (
     get_match_specs_from_conda_pinfile,
 )
 
-
 __version__ = importlib.metadata.version("snakemake-software-deployment-plugin-conda")
 
 
@@ -395,9 +394,9 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         return self._cache_assets.keys()
 
     async def cache_asset(self, asset: str, to_path: Path) -> None:
-        assert self._cache_assets is not None, (
-            "bug: get_cache_assets must be called before cache_asset"
-        )
+        assert (
+            self._cache_assets is not None
+        ), "bug: get_cache_assets must be called before cache_asset"
         record = self._cache_assets[asset]
 
         async with httpx.AsyncClient() as http_client:
@@ -423,6 +422,11 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         # Unset within such that really only this env is instantiated within.
         # The hash will remain unchanged, as it is already computed and cached.
         self_copy.within = None
+        # Drop spec.within as well, it cannot be pickled and is not needed inside
+        #  of the "within" environment.
+        if self_copy.spec is not None:
+            self_copy.spec = copy.copy(self_copy.spec)
+            self_copy.spec.within = None
         # Unset _package_records_cache since it cannot be pickled.
         self_copy._package_records_cache = None
         self_copy._cache_assets = None
