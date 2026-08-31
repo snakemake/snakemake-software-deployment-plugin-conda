@@ -1,6 +1,9 @@
 import os
+import shutil
 from pathlib import Path
 from typing import Optional, Type
+
+import pytest
 from snakemake_interface_software_deployment_plugins.tests import (
     TestSoftwareDeploymentBase,
     ShellExecutable,
@@ -20,6 +23,7 @@ from snakemake_software_deployment_plugin_conda import (
 from snakemake_software_deployment_plugin_container import Env as ContainerEnv
 from snakemake_software_deployment_plugin_container import EnvSpec as ContainerEnvSpec
 from snakemake_software_deployment_plugin_container import Settings as ContainerSettings
+from snakemake_software_deployment_plugin_container import Runtime
 
 
 # There can be multiple subclasses of SoftwareDeploymentProviderBase here.
@@ -112,6 +116,40 @@ class TestWithinContainer(Test):
 
     def get_within_settings(self) -> Optional[SoftwareDeploymentSettingsBase]:
         return ContainerSettings()
+
+
+@pytest.mark.skipif(
+    shutil.which("apptainer") is None, reason="apptainer is not available"
+)
+class TestWithinContainerApptainer(TestWithinContainer):
+    """Reproduces the apptainer squashfuse FUSE hang.
+
+    In contrast to the default udocker runtime, apptainer mounts SIF images (squashfs) via FUSE.
+    Importing rattler (dependency of snakemake_software_deployment_plugin_conda)
+      inside such a container (as done by `_run_method`, e.g. from `_platforms`)
+      intermittently deadlocks or panics when reading files from the image,
+    seems like there is a race in `squashfuse_ll`.
+
+    related to https://github.com/snakemake/snakemake/pull/3339#issuecomment-5216168878
+      and the test `test_singularity_conda`
+    """
+
+    __test__ = True
+
+    def _get_env(self, tmp_path):
+        # Reuse the base construction, then attach spec.within exactly like
+        # snakemake.deployment.SoftwareDeploymentManager.get_env does.
+        env = super()._get_env(tmp_path)
+        within_spec = self.get_within_spec()
+        assert within_spec is not None
+        env.spec.within = within_spec
+        return env
+
+    def get_within_spec(self):
+        return ContainerEnvSpec("condaforge/miniforge3:26.3.2-3")
+
+    def get_within_settings(self):
+        return ContainerSettings(runtime=Runtime.APPTAINER)
 
 
 class TestPypiWithinContainer(TestPypi):

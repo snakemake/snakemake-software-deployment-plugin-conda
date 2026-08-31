@@ -42,7 +42,6 @@ from snakemake_software_deployment_plugin_conda.pinfiles import (
     get_match_specs_from_conda_pinfile,
 )
 
-
 __version__ = importlib.metadata.version("snakemake-software-deployment-plugin-conda")
 
 
@@ -424,6 +423,12 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         # The hash will remain unchanged, as it is already computed and cached.
         self_copy.within = None
         self_copy.fallback = None
+        # Drop spec.within as well, it cannot be pickled and is not needed inside
+        #  of the "within" environment.
+        if self_copy.spec is not None:
+            self_copy.spec = copy.copy(self_copy.spec)
+            self_copy.spec.within = None
+            self_copy.spec.fallback = None
         # Unset _package_records_cache since it cannot be pickled.
         self_copy._package_records_cache = None
         self_copy._cache_assets = None
