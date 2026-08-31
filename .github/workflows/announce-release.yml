@@ -28,7 +28,7 @@ jobs:
           echo "Logo file found at: ${{ github.workspace }}/pr_logo/logo_dark.png"
       
       - name: Post to Mastodon
-        uses: snakemake/mastodon-release-post-action@main # == latest
+        uses: snakemake/mastodon-release-post-action@8380ce422a3640bcd9f8baa58a10a421e3a07b92dfeb3593afe4a78fa7099e09
         with:
           access-token: ${{ secrets.MASTODONBOT }}
           pr-title: ${{ github.event.head_commit.message }}
