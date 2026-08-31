@@ -160,3 +160,8 @@ cython_debug/
 #.idea/
 
 pixi.lock
+/.pixi
+/.cache
+/.ruff_cache
+coverage-report
+.vscode/settings.json

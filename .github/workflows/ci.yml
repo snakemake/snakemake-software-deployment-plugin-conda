@@ -36,15 +36,26 @@ jobs:
 
   testing:
     runs-on: ubuntu-latest
+    # only run if commit message does not start with "chore(main): release"
+    if: >-
+      !startsWith(github.event.head_commit.message, 'chore(main): release')
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup pixi
         uses: prefix-dev/setup-pixi@v0
+        with:
+          environments: dev
 
       - uses: conda-incubator/setup-miniconda@v3
         with:
           channels: conda-forge,nodefaults
+
+      - name: Setup Apptainer
+        if: runner.os == 'Linux'
+        uses: eWaterCycle/setup-apptainer@v2
+        with:
+          apptainer-version: 1.5.3
 
       - name: Deploy external test env
         shell: bash -el {0}

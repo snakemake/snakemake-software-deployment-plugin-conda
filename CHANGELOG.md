@@ -1,5 +1,117 @@
 # Changelog
 
+## [0.8.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.7.0...v0.8.0) (2026-08-31)
+
+
+### Features
+
+* support more sh-like shells ([c18e44f](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/c18e44f7b80b710a4f02c340e3e9e4f4ff84d91b))
+
+
+### Bug Fixes
+
+* clear fallback before pickling ([#31](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/31)) ([747b731](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/747b731be1a3fa64a62ff9c85235efbbbb7a0d3d))
+
+## [0.7.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.6.0...v0.7.0) (2026-07-25)
+
+
+### Features
+
+* support more sh-like shells ([c18e44f](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/c18e44f7b80b710a4f02c340e3e9e4f4ff84d91b))
+
+## [0.6.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.5.3...v0.6.0) (2026-07-13)
+
+
+### Features
+
+* support for post-deploy.sh scripts ([#26](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/26)) ([75cea90](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/75cea901019236d881460277aba896595bba8e91))
+
+## [0.5.3](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.5.2...v0.5.3) (2026-06-22)
+
+
+### Performance Improvements
+
+* raise py-rattler dependency ([cdd66a0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/cdd66a042d60c5743c774eb5d04f19e19688cdea))
+
+## [0.5.2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.5.1...v0.5.2) (2026-06-02)
+
+
+### Bug Fixes
+
+* properly handle non-local pinfiles ([#23](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/23)) ([ea2b1c2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/ea2b1c28b758f8e97f8e5a2c27b5a61e8e3ededa))
+
+## [0.5.1](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.5.0...v0.5.1) (2026-06-02)
+
+
+### Bug Fixes
+
+* set minimum interface version ([586cc7d](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/586cc7d823851572a5e73fb4885ba899b2a6b2cb))
+
+
+### Performance Improvements
+
+* update dependencies ([#22](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/22)) ([23ff16b](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/23ff16ba4da2bf25bf0e25688fda8fb99cdbbcd9))
+
+## [0.5.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.4.2...v0.5.0) (2026-03-10)
+
+
+### Features
+
+* containerization support ([abf96d1](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/abf96d1b1f719b879f40d295b7f5c3b051de8064))
+
+## [0.4.2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.4.1...v0.4.2) (2026-03-10)
+
+
+### Bug Fixes
+
+* handle defaults channel ([a314b71](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/a314b7138ff104a34b9424360ccd3162cdb0294f))
+* pass absolute path to rattler activation function ([3b4288d](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/3b4288dc9c67081db654b9048452361da9403186))
+* use latest container plugin ([e1dd5b7](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/e1dd5b7ede7a90210fa70a99651cc1ec2d829cd6))
+
+## [0.4.1](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.4.0...v0.4.1) (2026-03-09)
+
+
+### Bug Fixes
+
+* handle defaults channel ([a314b71](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/a314b7138ff104a34b9424360ccd3162cdb0294f))
+* return list of external env directories instead of iterable (for caching) ([602530d](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/602530d8a58a282726edb4fb4ccf4277895a0407))
+
+## [0.4.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.5...v0.4.0) (2026-03-09)
+
+
+### Features
+
+* implement test for executable to be contained in env ([b584db7](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/b584db72b51f618ff5cb6aa3f7ce68cb8f345f18))
+
+
+### Bug Fixes
+
+* adapt to latest interface ([a971374](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/a97137463bb3dfec6a9f14f48f9ccdb1072d835b))
+* assert tipe for cache_asset ([bb1d560](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/bb1d560f1edbe8c7ccc5a438a384a6fc01096b8f))
+* use pypi-only dependencies ([20f8c4a](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/20f8c4af484720c263ab86af789a840c98dde947))
+* various small fixes ([d55d381](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/d55d381970f94abd5198221a130ba69342670f76))
+
+## [0.3.5](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.4...v0.3.5) (2026-02-19)
+
+
+### Bug Fixes
+
+* improved error message ([4ff53da](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/4ff53da903cd84750507c568e0f858898f530308))
+
+## [0.3.4](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.3...v0.3.4) (2026-02-18)
+
+
+### Bug Fixes
+
+* further fixes to deployment and caching in combination with enclosing environments ([8bf2448](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/8bf24484c77661a179ddc240dc5c55f3a1988c45))
+
+## [0.3.3](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.2...v0.3.3) (2026-02-18)
+
+
+### Bug Fixes
+
+* enable deployment within a surrounding environment (e.g. a container) ([#11](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/11)) ([f230e07](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/f230e079b3eebc6bb1162486e1ce923a16e1c4e3))
+
 ## [0.3.2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.3.1...v0.3.2) (2025-09-19)
 
 
