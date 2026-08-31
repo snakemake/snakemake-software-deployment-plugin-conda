@@ -21,19 +21,19 @@ jobs:
       - name: Verify logo file exists
         run: |
           ls -la ${{ github.workspace }}/pr_logo/
-          if [ ! -f "${{ github.workspace }}/pr_logo/long_logo_conda.png" ]; then
+          if [ ! -f "${{ github.workspace }}/pr_logo/logo_dark.png" ]; then
             echo "ERROR: Logo file not found!"
             exit 1
           fi
-          echo "Logo file found at: ${{ github.workspace }}/pr_logo/long_logo_conda.png"
+          echo "Logo file found at: ${{ github.workspace }}/pr_logo/logo_dark.png"
       
       - name: Post to Mastodon
         uses: snakemake/mastodon-release-post-action@main # == latest
         with:
           access-token: ${{ secrets.MASTODONBOT }}
           pr-title: ${{ github.event.head_commit.message }}
-          image: "long_logo_conda.png"
-          image-description: "Snakemake HPC logo for Mastodon"
+          image: "logo_dark.png"
+          image-description: "Snakemake logo for Mastodon"
           message: |
             Beep, Beep - I am your friendly #Snakemake release announcement bot.
             
