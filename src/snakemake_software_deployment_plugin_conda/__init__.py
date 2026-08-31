@@ -423,6 +423,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         # Unset within such that really only this env is instantiated within.
         # The hash will remain unchanged, as it is already computed and cached.
         self_copy.within = None
+        self_copy.fallback = None
         # Unset _package_records_cache since it cannot be pickled.
         self_copy._package_records_cache = None
         self_copy._cache_assets = None
