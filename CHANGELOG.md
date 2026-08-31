@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.7.0...v0.8.0) (2026-08-31)
+
+
+### Features
+
+* support more sh-like shells ([c18e44f](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/c18e44f7b80b710a4f02c340e3e9e4f4ff84d91b))
+
+
+### Bug Fixes
+
+* clear fallback before pickling ([#31](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/31)) ([747b731](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/747b731be1a3fa64a62ff9c85235efbbbb7a0d3d))
+
 ## [0.7.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.6.0...v0.7.0) (2026-07-25)
 
 
