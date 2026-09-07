@@ -57,9 +57,6 @@ jobs:
         with:
           apptainer-version: 1.5.3
 
-      - name: Build source and wheel distribution + check build
-        run: pixi run check-build
-
       - name: Deploy external test env
         shell: bash -el {0}
         run: |
@@ -68,8 +65,6 @@ jobs:
 
       - name: Run pytest
         env:
-          PIP_INDEX_URL: https://pypi.org/simple/
-          PIP_FIND_LINKS: ${{ github.workspace }}/dist
           TEST_NAMED_ENV: "1"
           TEST_DIRECTORY_ENV: "1"
         run: pixi run test -v

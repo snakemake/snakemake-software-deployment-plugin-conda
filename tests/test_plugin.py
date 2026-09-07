@@ -1,7 +1,9 @@
+from collections.abc import Set
 import os
 import shutil
 from pathlib import Path
 from typing import Optional, Type
+import subprocess as sp
 
 import pytest
 from snakemake_interface_software_deployment_plugins.tests import (
@@ -108,6 +110,12 @@ class TestWithinContainer(Test):
     # Do not use login shell here, we don't need an external conda but rather the udocker installed by pixi.
     shell_executable = ShellExecutable("bash", args=[], command_arg="-c")
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        sp.run(["pixi", "run", "check-build"], check=True, capture_output=True)
+        self.dist_dir = (Path(__file__).parent.parent / "dist").absolute()
+        os.environ["PIP_FIND_LINKS"] = self.dist_dir.as_posix()
+
     def get_within_cls(self) -> Optional[Type[EnvBase]]:
         return ContainerEnv
 
@@ -115,7 +123,13 @@ class TestWithinContainer(Test):
         return ContainerEnvSpec("condaforge/miniforge3:26.1.0-0")
 
     def get_within_settings(self) -> Optional[SoftwareDeploymentSettingsBase]:
-        return ContainerSettings()
+        dist_dir = self.dist_dir.as_posix()
+        return ContainerSettings(
+            mountpoints=[f"{dist_dir}:{dist_dir}"]
+        )
+
+    def get_envvars(self) -> Set[str]:
+        return {"PIP_FIND_LINKS"}
 
 
 @pytest.mark.skipif(
