@@ -38,6 +38,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/snakemake-software-deployment-plugin-conda
     # only run if commit message does not start with "chore(main): release"
     if: >-
       !startsWith(github.event.head_commit.message, 'chore(main): release')
