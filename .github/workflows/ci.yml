@@ -36,11 +36,6 @@ jobs:
 
   testing:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/snakemake-software-deployment-plugin-conda
     # only run if commit message does not start with "chore(main): release"
     if: >-
       !startsWith(github.event.head_commit.message, 'chore(main): release')
@@ -65,13 +60,6 @@ jobs:
       - name: Build source and wheel distribution + check build
         run: pixi run check-build
 
-      - name: Publish current package to TestPyPI
-        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) }}
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          skip-existing: true
-
       - name: Deploy external test env
         shell: bash -el {0}
         run: |
@@ -81,7 +69,7 @@ jobs:
       - name: Run pytest
         env:
           PIP_INDEX_URL: https://pypi.org/simple/
-          PIP_EXTRA_INDEX_URL: https://test.pypi.org/simple/
+          PIP_FIND_LINKS: ${{ github.workspace }}/dist
           TEST_NAMED_ENV: "1"
           TEST_DIRECTORY_ENV: "1"
         run: pixi run test -v
