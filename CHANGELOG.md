@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.8.0...v0.8.1) (2026-09-07)
+
+
+### Bug Fixes
+
+* fix release publish job failure on wheel metadata validation ([#33](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/33)) ([746b8f7](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/746b8f70ff762f324ce41ca829594fa4c24a2db3))
+
 ## [0.8.0](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.7.0...v0.8.0) (2026-08-31)
 
 
