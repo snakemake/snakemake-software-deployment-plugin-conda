@@ -124,9 +124,7 @@ class TestWithinContainer(Test):
 
     def get_within_settings(self) -> Optional[SoftwareDeploymentSettingsBase]:
         dist_dir = self.dist_dir.as_posix()
-        return ContainerSettings(
-            mountpoints=[f"{dist_dir}:{dist_dir}"]
-        )
+        return ContainerSettings(mountpoints=[f"{dist_dir}:{dist_dir}"])
 
     def get_envvars(self) -> Set[str]:
         return {"PIP_FIND_LINKS"}
@@ -163,13 +161,22 @@ class TestWithinContainerApptainer(TestWithinContainer):
         return ContainerEnvSpec("condaforge/miniforge3:26.3.2-3")
 
     def get_within_settings(self):
-        return ContainerSettings(runtime=Runtime.APPTAINER)
+        dist_dir = self.dist_dir.as_posix()
+        return ContainerSettings(
+            runtime=Runtime.APPTAINER, mountpoints=[f"{dist_dir}:{dist_dir}"]
+        )
 
 
 class TestPypiWithinContainer(TestPypi):
     __test__ = True
     # Do not use login shell here, we don't need an external conda but rather the udocker installed by pixi.
     shell_executable = ShellExecutable("bash", args=[], command_arg="-c")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        sp.run(["pixi", "run", "check-build"], check=True, capture_output=True)
+        self.dist_dir = (Path(__file__).parent.parent / "dist").absolute()
+        os.environ["PIP_FIND_LINKS"] = self.dist_dir.as_posix()
 
     def get_within_cls(self) -> Optional[Type[EnvBase]]:
         return ContainerEnv
@@ -178,7 +185,11 @@ class TestPypiWithinContainer(TestPypi):
         return ContainerEnvSpec("condaforge/miniforge3:26.1.0-0")
 
     def get_within_settings(self) -> Optional[SoftwareDeploymentSettingsBase]:
-        return ContainerSettings()
+        dist_dir = self.dist_dir.as_posix()
+        return ContainerSettings(mountpoints=[f"{dist_dir}:{dist_dir}"])
+
+    def get_envvars(self) -> Set[str]:
+        return {"PIP_FIND_LINKS"}
 
 
 class TestNamed(Test):
