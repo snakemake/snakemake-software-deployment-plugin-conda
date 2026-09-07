@@ -61,12 +61,10 @@ jobs:
         run: pixi run check-build
 
       - name: Publish current package to TestPyPI
-        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && secrets.TEST_PYPI_API_TOKEN != '' }}
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-          user: __token__
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           skip-existing: true
 
       - name: Deploy external test env
