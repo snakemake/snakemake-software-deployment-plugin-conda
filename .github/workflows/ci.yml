@@ -36,6 +36,8 @@ jobs:
 
   testing:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     # only run if commit message does not start with "chore(main): release"
     if: >-
       !startsWith(github.event.head_commit.message, 'chore(main): release')
