@@ -501,10 +501,22 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
 
         records = await self._package_records()
 
+        assert self.is_cacheable()
+        assets = await self.get_cache_assets()
+        staged_path = self.deployment_prefix / "staged_packages"
+        for asset in assets:
+            # copy race condition free
+            fd, tmp_stage_path = tempfile.mkstemp(
+                prefix=asset, suffix=".part", dir=staged_path
+            )
+            os.close(fd)
+            (self.cache_path / asset).copy(tmp_stage_path)
+            os.replace(tmp_stage_path, staged_path / asset)
+
         await install(
             records=records,
             target_prefix=self.deployment_path,
-            cache_dir=self.cache_path,
+            cache_dir=staged_path,
             show_progress=False,
         )
 
