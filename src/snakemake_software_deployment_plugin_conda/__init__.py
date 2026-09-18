@@ -504,6 +504,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         assert self.is_cacheable()
         assets = await self.get_cache_assets()
         staged_path = self.deployment_prefix / "staged_packages"
+        staged_path.mkdir(parents=True, exist_ok=True)
         for asset in assets:
             # copy race condition free
             fd, tmp_stage_path = tempfile.mkstemp(
