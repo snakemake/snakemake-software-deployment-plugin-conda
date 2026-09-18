@@ -513,12 +513,18 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             (self.cache_path / asset).copy(tmp_stage_path)
             os.replace(tmp_stage_path, staged_path / asset)
 
-        await install(
-            records=records,
-            target_prefix=self.deployment_path,
-            cache_dir=staged_path,
-            show_progress=False,
-        )
+        try:
+            await install(
+                records=records,
+                target_prefix=self.deployment_path,
+                cache_dir=staged_path,
+                show_progress=False,
+            )
+        finally:
+            for asset in assets:
+                # the package archives can be removed now, since their unpacked
+                # counterparts are all present
+                (staged_path / asset).unlink()
 
         pypi_specs = [spec.replace(" ", "") for spec in self.pypi_specs]
         if pypi_specs:
