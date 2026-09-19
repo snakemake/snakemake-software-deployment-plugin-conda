@@ -511,7 +511,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 prefix=asset, suffix=".part", dir=staged_path
             )
             os.close(fd)
-            (self.cache_path / asset).copy(tmp_stage_path)
+            self.get_cache_asset_path(asset).copy(tmp_stage_path)
             os.replace(tmp_stage_path, staged_path / asset)
 
         try:
