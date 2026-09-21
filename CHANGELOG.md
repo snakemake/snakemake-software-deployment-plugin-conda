@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.8.1...v0.8.2) (2026-09-21)
+
+
+### Bug Fixes
+
+* stage cached packages into deployment_prefix before deployment ([#37](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/37)) ([580d4ba](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/580d4bae5b16014d834bae74e40b8784f5066002))
+
 ## [0.8.1](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.8.0...v0.8.1) (2026-09-07)
 
 
