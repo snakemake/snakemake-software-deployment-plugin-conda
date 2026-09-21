@@ -224,6 +224,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 if env_dir.is_dir():
                     return env_dir
                 current_dir = current_dir.parent
+            # TODO: should we install the env if it is not found but specified in the pixi.toml?
             raise WorkflowError(f"Could not find pixienv {self.spec.pixienv}")
 
     @property
