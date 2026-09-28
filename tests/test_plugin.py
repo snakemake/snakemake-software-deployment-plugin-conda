@@ -1,10 +1,13 @@
 from collections.abc import Set
+import asyncio
 import os
 import shutil
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Optional, Type
 import subprocess as sp
 
+import httpx
 import pytest
 from snakemake_interface_software_deployment_plugins.tests import (
     TestSoftwareDeploymentBase,
@@ -214,3 +217,107 @@ class TestDirectory(Test):
         # Return a test command that should be executed within the environment
         # with exit code 0 (i.e. without error).
         return "stress-ng --cpu 1 --timeout 1s"
+
+
+def test_cache_asset_allows_slow_package_transfers(monkeypatch, tmp_path):
+    observed = {}
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        async def aiter_bytes(self, chunk_size):
+            assert chunk_size == 1024
+            yield b"package-bytes"
+
+    class FakeClient:
+        def __init__(self, *, timeout):
+            observed["timeout"] = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def get(self, url):
+            observed["url"] = url
+            return FakeResponse()
+
+    monkeypatch.setattr(
+        "snakemake_software_deployment_plugin_conda.httpx.AsyncClient", FakeClient
+    )
+    env = SimpleNamespace(
+        _cache_assets={"asset": SimpleNamespace(url="https://example.test/pkg.conda")}
+    )
+    target = tmp_path / "asset"
+
+    asyncio.run(Env.cache_asset(env, "asset", target))
+
+    assert observed == {
+        "timeout": 60.0,
+        "url": "https://example.test/pkg.conda",
+    }
+    assert target.read_bytes() == b"package-bytes"
+
+
+def test_httpx_client_supports_socks_proxy():
+    async def construct_and_close_client():
+        async with httpx.AsyncClient(proxy="socks5://127.0.0.1:9"):
+            pass
+
+    asyncio.run(construct_and_close_client())
+
+
+def test_deploy_copies_cached_assets_on_supported_python(monkeypatch, tmp_path):
+    asset = "pkg.conda"
+    cache_path = tmp_path / "cache" / asset
+    cache_path.parent.mkdir()
+    cache_path.write_bytes(b"cached-package")
+    deployment_prefix = tmp_path / "deployment-prefix"
+    deployment_path = deployment_prefix / "environment"
+    install_call = {}
+
+    async def fake_package_records():
+        return ["record"]
+
+    async def fake_cache_assets():
+        return [asset]
+
+    async def fake_install(*, records, target_prefix, cache_dir, show_progress):
+        install_call.update(
+            records=records,
+            target_prefix=target_prefix,
+            cache_dir=cache_dir,
+            show_progress=show_progress,
+            package=(cache_dir / asset).read_bytes(),
+        )
+
+    monkeypatch.setattr(
+        "snakemake_software_deployment_plugin_conda.install", fake_install
+    )
+    env = SimpleNamespace(
+        spec=SimpleNamespace(
+            envfile=object(),
+            post_deploy_script=SimpleNamespace(cached=tmp_path / "absent-script"),
+        ),
+        _package_records=fake_package_records,
+        is_cacheable=lambda: True,
+        get_cache_assets=fake_cache_assets,
+        deployment_prefix=deployment_prefix,
+        deployment_path=deployment_path,
+        get_cache_asset_path=lambda _: cache_path,
+        pypi_specs=[],
+    )
+
+    asyncio.run(Env.deploy(env))
+
+    assert install_call == {
+        "records": ["record"],
+        "target_prefix": deployment_path,
+        "cache_dir": deployment_prefix / "staged_packages",
+        "show_progress": False,
+        "package": b"cached-package",
+    }
+    assert cache_path.read_bytes() == b"cached-package"
+    assert not (deployment_prefix / "staged_packages" / asset).exists()
