@@ -219,42 +219,40 @@ class TestDirectory(Test):
         return "stress-ng --cpu 1 --timeout 1s"
 
 
-def test_cache_asset_allows_slow_package_transfers(monkeypatch, tmp_path):
+def test_cache_asset_streams_slow_package_transfers(monkeypatch, tmp_path):
     observed = {}
+    target = tmp_path / "asset"
+    real_async_client = httpx.AsyncClient
 
-    class FakeResponse:
-        def raise_for_status(self):
-            return None
-
-        async def aiter_bytes(self, chunk_size):
-            assert chunk_size == 1024
+    class ProbeStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            observed["target_exists_when_stream_starts"] = target.exists()
             yield b"package-bytes"
 
-    class FakeClient:
-        def __init__(self, *, timeout):
-            observed["timeout"] = timeout
+    async def handler(request):
+        observed["method"] = request.method
+        observed["url"] = str(request.url)
+        return httpx.Response(200, stream=ProbeStream())
 
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *args):
-            return None
-
-        async def get(self, url):
-            observed["url"] = url
-            return FakeResponse()
+    def client_factory(*, timeout):
+        observed["timeout"] = timeout
+        return real_async_client(
+            timeout=timeout,
+            transport=httpx.MockTransport(handler),
+        )
 
     monkeypatch.setattr(
-        "snakemake_software_deployment_plugin_conda.httpx.AsyncClient", FakeClient
+        "snakemake_software_deployment_plugin_conda.httpx.AsyncClient", client_factory
     )
     env = SimpleNamespace(
         _cache_assets={"asset": SimpleNamespace(url="https://example.test/pkg.conda")}
     )
-    target = tmp_path / "asset"
 
     asyncio.run(Env.cache_asset(env, "asset", target))
 
     assert observed == {
+        "method": "GET",
+        "target_exists_when_stream_starts": True,
         "timeout": 60.0,
         "url": "https://example.test/pkg.conda",
     }
