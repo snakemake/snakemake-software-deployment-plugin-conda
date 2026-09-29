@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.3](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.8.2...v0.8.3) (2026-09-29)
+
+
+### Performance Improvements
+
+* rattler 0.26 support ([#41](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/41)) ([d4b1daa](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/d4b1daaa8034ee113ebad7b141ad691bc6425ef2))
+
 ## [0.8.2](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.8.1...v0.8.2) (2026-09-21)
 
 
