@@ -3,12 +3,13 @@ import asyncio
 import os
 import shutil
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Optional, Type
 import subprocess as sp
 
 import httpx
 import pytest
+from rattler import PackageRecord
+from rattler.repo_data import RepoDataRecord
 from snakemake_interface_software_deployment_plugins.tests import (
     TestSoftwareDeploymentBase,
     ShellExecutable,
@@ -219,6 +220,22 @@ class TestDirectory(Test):
         return "stress-ng --cpu 1 --timeout 1s"
 
 
+def _repo_data_record() -> RepoDataRecord:
+    file_name = "fixture-1.0-0.conda"
+    return RepoDataRecord(
+        PackageRecord(
+            name="fixture",
+            version="1.0",
+            build="0",
+            build_number=0,
+            subdir="noarch",
+        ),
+        file_name=file_name,
+        url=f"https://example.test/{file_name}",
+        channel="https://example.test",
+    )
+
+
 def test_cache_asset_streams_slow_package_transfers(monkeypatch, tmp_path):
     observed = {}
     target = tmp_path / "asset"
@@ -244,17 +261,17 @@ def test_cache_asset_streams_slow_package_transfers(monkeypatch, tmp_path):
     monkeypatch.setattr(
         "snakemake_software_deployment_plugin_conda.httpx.AsyncClient", client_factory
     )
-    env = SimpleNamespace(
-        _cache_assets={"asset": SimpleNamespace(url="https://example.test/pkg.conda")}
-    )
+    env = Test()._get_env(tmp_path)
+    record = _repo_data_record()
+    env._cache_assets = {record.file_name: record}
 
-    asyncio.run(Env.cache_asset(env, "asset", target))
+    asyncio.run(env.cache_asset(record.file_name, target))
 
     assert observed == {
         "method": "GET",
         "target_exists_when_stream_starts": True,
         "timeout": 60.0,
-        "url": "https://example.test/pkg.conda",
+        "url": record.url,
     }
     assert target.read_bytes() == b"package-bytes"
 
@@ -268,19 +285,14 @@ def test_httpx_client_supports_socks_proxy():
 
 
 def test_deploy_copies_cached_assets_on_supported_python(monkeypatch, tmp_path):
-    asset = "pkg.conda"
-    cache_path = tmp_path / "cache" / asset
-    cache_path.parent.mkdir()
+    env = Test()._get_env(tmp_path)
+    record = _repo_data_record()
+    asset = record.file_name
+    env._package_records_cache = [record]
+    env._cache_assets = {asset: record}
+    cache_path = env.get_cache_asset_path(asset)
     cache_path.write_bytes(b"cached-package")
-    deployment_prefix = tmp_path / "deployment-prefix"
-    deployment_path = deployment_prefix / "environment"
     install_call = {}
-
-    async def fake_package_records():
-        return ["record"]
-
-    async def fake_cache_assets():
-        return [asset]
 
     async def fake_install(*, records, target_prefix, cache_dir, show_progress):
         install_call.update(
@@ -294,28 +306,15 @@ def test_deploy_copies_cached_assets_on_supported_python(monkeypatch, tmp_path):
     monkeypatch.setattr(
         "snakemake_software_deployment_plugin_conda.install", fake_install
     )
-    env = SimpleNamespace(
-        spec=SimpleNamespace(
-            envfile=object(),
-            post_deploy_script=SimpleNamespace(cached=tmp_path / "absent-script"),
-        ),
-        _package_records=fake_package_records,
-        is_cacheable=lambda: True,
-        get_cache_assets=fake_cache_assets,
-        deployment_prefix=deployment_prefix,
-        deployment_path=deployment_path,
-        get_cache_asset_path=lambda _: cache_path,
-        pypi_specs=[],
-    )
 
-    asyncio.run(Env.deploy(env))
+    asyncio.run(env.deploy())
 
     assert install_call == {
-        "records": ["record"],
-        "target_prefix": deployment_path,
-        "cache_dir": deployment_prefix / "staged_packages",
+        "records": [record],
+        "target_prefix": env.deployment_path,
+        "cache_dir": env.deployment_prefix / "staged_packages",
         "show_progress": False,
         "package": b"cached-package",
     }
     assert cache_path.read_bytes() == b"cached-package"
-    assert not (deployment_prefix / "staged_packages" / asset).exists()
+    assert not (env.deployment_prefix / "staged_packages" / asset).exists()
