@@ -403,12 +403,14 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         # HTTPX's five-second default between response chunks. Match Conda's
         # conventional remote-read timeout while retaining a finite failure
         # bound for stalled transfers.
-        async with httpx.AsyncClient(timeout=60.0) as http_client:
-            async with http_client.stream("GET", record.url) as response:
-                response.raise_for_status()
-                async with aiofiles.open(to_path, "wb") as f:
-                    async for chunk in response.aiter_bytes(chunk_size=1024):
-                        await f.write(chunk)
+        async with (
+            httpx.AsyncClient(timeout=60.0) as http_client,
+            http_client.stream("GET", record.url) as response,
+        ):
+            response.raise_for_status()
+            async with aiofiles.open(to_path, "wb") as f:
+                async for chunk in response.aiter_bytes(chunk_size=1024):
+                    await f.write(chunk)
 
     def _run_method(
         self, name: str, *args: Any, mod_pattern: Optional[str] = None, **kwargs: Any
