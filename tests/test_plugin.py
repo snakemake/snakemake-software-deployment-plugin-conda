@@ -29,11 +29,9 @@ from snakemake_software_deployment_plugin_container import Runtime
 
 
 
-def get_dist_dir() -> Path:
-    sp.run(["pixi", "run", "check-build"], check=True, capture_output=True)
-    dist_dir = (Path(__file__).parent.parent / "dist").absolute()
-    os.environ["PIP_FIND_LINKS"] = dist_dir.as_posix()
-    return dist_dir
+sp.run(["pixi", "run", "-e", "publish", "check-build"], check=True)
+DIST_DIR = (Path(__file__).parent.parent / "dist").absolute()
+os.environ["PIP_FIND_LINKS"] = DIST_DIR.as_posix()
 
 
 # There can be multiple subclasses of SoftwareDeploymentProviderBase here.
@@ -125,7 +123,7 @@ class TestWithinContainer(Test):
         return ContainerEnvSpec("condaforge/miniforge3:26.1.0-0")
 
     def get_within_settings(self) -> Optional[SoftwareDeploymentSettingsBase]:
-        dist_dir = get_dist_dir().as_posix()
+        dist_dir = DIST_DIR.as_posix()
         return ContainerSettings(mountpoints=[f"{dist_dir}:{dist_dir}"])
 
     def get_envvars(self) -> Set[str]:
@@ -163,7 +161,7 @@ class TestWithinContainerApptainer(TestWithinContainer):
         return ContainerEnvSpec("condaforge/miniforge3:26.3.2-3")
 
     def get_within_settings(self):
-        dist_dir = get_dist_dir().as_posix()
+        dist_dir = DIST_DIR.as_posix()
         return ContainerSettings(
             runtime=Runtime.APPTAINER, mountpoints=[f"{dist_dir}:{dist_dir}"]
         )
@@ -181,7 +179,7 @@ class TestPypiWithinContainer(TestPypi):
         return ContainerEnvSpec("condaforge/miniforge3:26.1.0-0")
 
     def get_within_settings(self) -> Optional[SoftwareDeploymentSettingsBase]:
-        dist_dir = get_dist_dir().as_posix()
+        dist_dir = DIST_DIR.as_posix()
         return ContainerSettings(mountpoints=[f"{dist_dir}:{dist_dir}"])
 
     def get_envvars(self) -> Set[str]:
