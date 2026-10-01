@@ -28,7 +28,6 @@ from snakemake_software_deployment_plugin_container import Settings as Container
 from snakemake_software_deployment_plugin_container import Runtime
 
 
-
 sp.run(["pixi", "run", "-e", "publish", "check-build"], check=True)
 DIST_DIR = (Path(__file__).parent.parent / "dist").absolute()
 os.environ["PIP_FIND_LINKS"] = DIST_DIR.as_posix()

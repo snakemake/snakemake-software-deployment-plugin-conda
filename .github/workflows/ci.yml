@@ -71,7 +71,7 @@ jobs:
         env:
           TEST_NAMED_ENV: "1"
           TEST_DIRECTORY_ENV: "1"
-        run: pixi run test -v
+        run: pixi run -e ${{ matrix.devenv }} -v
 
       - name: Run Coverage
         run: pixi run coverage-report
