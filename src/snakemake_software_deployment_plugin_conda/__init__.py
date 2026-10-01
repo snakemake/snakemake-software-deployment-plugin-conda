@@ -59,13 +59,14 @@ class EnvSpec(EnvSpecBase):
     envfile: Optional[EnvSpecSourceFile] = None
     directory: Optional[Path] = None
     name: Optional[str] = None
+    pixienv: Optional[str] = None
     pinfile: Optional[EnvSpecSourceFile] = None
     post_deploy_script: Optional[EnvSpecSourceFile] = None
 
     def __post_init__(self):
-        if sum(x is not None for x in (self.envfile, self.name, self.directory)) != 1:
+        if sum(x is not None for x in (self.envfile, self.name, self.directory, self.pixienv)) != 1:
             raise WorkflowError(
-                "Exactly one of envfile, name, or directory must be set."
+                "Exactly one of envfile, name, directory, or pixienv must be set."
             )
 
         if self.envfile is not None:
@@ -83,6 +84,9 @@ class EnvSpec(EnvSpecBase):
         yield "envfile"
         yield "name"
         yield "directory"
+        yield "pixienv"
+        yield "post_deploy_script"
+        yield "pinfile"
 
     @classmethod
     def source_path_attributes(cls) -> Iterable[str]:
@@ -96,9 +100,11 @@ class EnvSpec(EnvSpecBase):
             return str(self.envfile.path_or_uri)
         elif self.directory is not None:
             return str(self.directory)
-        else:
-            assert self.name is not None
+        elif self.name is not None:
             return self.name
+        else:
+            assert self.pixienv is not None
+            return self.pixienv
 
 
 class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
@@ -192,7 +198,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             return self.deployment_path
         elif self.spec.directory is not None:
             return self.spec.directory
-        else:
+        elif self.spec.name is not None:
             assert self.spec.name is not None
             candidates = {
                 env_dir / self.spec.name
@@ -208,6 +214,18 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 )
             else:
                 raise WorkflowError(f"Could not find environment {self.spec.name}")
+        elif self.spec.pixienv is not None:
+            # TODO: decide whether this should be relative to the workdir or the source dir?
+            # walk up until we find a .pixi directory with the named environment
+            current_dir = Path.cwd()
+            while current_dir != current_dir.parent:
+                pixi_dir = current_dir / ".pixi"
+                env_dir = pixi_dir / "envs" / self.spec.pixienv
+                if env_dir.is_dir():
+                    return env_dir
+                current_dir = current_dir.parent
+            # TODO: should we install the env if it is not found but specified in the pixi.toml?
+            raise WorkflowError(f"Could not find pixienv {self.spec.pixienv}")
 
     @property
     def envfile_content(self) -> Dict[str, list]:
