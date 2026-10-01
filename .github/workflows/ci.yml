@@ -74,4 +74,5 @@ jobs:
         run: pixi run -e ${{ matrix.devenv }} -v
 
       - name: Run Coverage
+        if: matrix.devenv == 'dev'
         run: pixi run coverage-report
