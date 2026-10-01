@@ -51,7 +51,7 @@ snakemake-software-deployment-plugin-container = ">=0.7.1,<1.0"
 format = { cmd = "ruff format", default-environment = "dev" }
 lint = { cmd = "ruff check", default-environment = "dev" }
 typecheck = { cmd = "pyrefly check", default-environment = "dev" }
-qc = { depends-on = ["format", "lint"], default-environment = "dev" }
+qc = { depends-on = ["format", "lint"] }
 coverage-report = { cmd = "coverage report -m", default-environment = "dev" }
 
 [tool.pixi.feature.dev.tasks.test]
