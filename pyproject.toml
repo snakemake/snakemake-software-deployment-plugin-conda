@@ -35,7 +35,11 @@ platforms = ["osx-arm64", "linux-64"]
 
 [tool.pixi.environments]
 dev = { features = ["dev"] }
+dev-minpy = { features = ["minpy", "dev"] }
 publish = { features = ["publish"] }
+
+[tool.pixi.feature.minpy.dependencies]
+python = "==3.11"
 
 [tool.pixi.feature.dev.pypi-dependencies]
 pytest = ">=8.3.5,<9"
