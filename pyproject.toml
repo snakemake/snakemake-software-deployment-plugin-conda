@@ -50,11 +50,11 @@ snakemake-software-deployment-plugin-container = ">=0.7.1,<1.0"
 #snakemake-software-deployment-plugin-container = { path = "../snakemake-software-deployment-plugin-container", editable = true }
 
 [tool.pixi.feature.dev.tasks]
-format = "ruff format"
-lint = "ruff check"
-typecheck = "pyrefly check"
-qc = { depends-on = ["format", "lint"] }
-coverage-report = "coverage report -m"
+format = { cmd = "ruff format", default-environment = "dev" }
+lint = { cmd = "ruff check", default-environment = "dev" }
+typecheck = { cmd = "pyrefly check", default-environment = "dev" }
+qc = { depends-on = ["format", "lint"], default-environment = "dev" }
+coverage-report = { cmd = "coverage report -m", default-environment = "dev" }
 
 [tool.pixi.feature.dev.tasks.test]
 cmd = [
@@ -64,6 +64,7 @@ cmd = [
   "--cov-report=term-missing",
   "tests/test_plugin.py"
 ]
+default-environment = "dev"
 
 [tool.coverage.report]
 exclude_lines = [
