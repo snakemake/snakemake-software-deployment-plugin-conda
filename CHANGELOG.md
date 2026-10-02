@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.4](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.8.3...v0.8.4) (2026-10-02)
+
+
+### Bug Fixes
+
+* ensure python &lt;3.14 compatibility ([#43](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/43)) ([bc55ee7](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/bc55ee7fd1ca476ded6f3cdf02b5bbb4ec5186f3))
+* fix Conda package cache timeout, staging and SOCKS proxy support ([#40](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/40)) ([3562a23](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/3562a2326ae8978e3ddbc55e55c5c3d45223b33d))
+
 ## [0.8.3](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.8.2...v0.8.3) (2026-09-29)
 
 

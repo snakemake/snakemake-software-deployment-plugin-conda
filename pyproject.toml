@@ -1,6 +1,6 @@
 [project]
 name = "snakemake-software-deployment-plugin-conda"
-version = "0.8.3"
+version = "0.8.4"
 authors = [{ name = "Johannes Köster", email = "johannes.koester@uni-due.de" }]
 description = "Software deployment plugin for Snakemake using rattler to deploy conda packages."
 readme = "README.md"
