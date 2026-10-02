@@ -399,8 +399,14 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         )
         record = self._cache_assets[asset]
 
-        async with httpx.AsyncClient() as http_client:
-            response = await http_client.get(record.url)
+        # Conda packages can be large and may legitimately take longer than
+        # HTTPX's five-second default between response chunks. Match Conda's
+        # conventional remote-read timeout while retaining a finite failure
+        # bound for stalled transfers.
+        async with (
+            httpx.AsyncClient(timeout=60.0) as http_client,
+            http_client.stream("GET", record.url) as response,
+        ):
             response.raise_for_status()
             async with aiofiles.open(to_path, "wb") as f:
                 async for chunk in response.aiter_bytes(chunk_size=1024):
@@ -511,6 +517,8 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 prefix=asset, suffix=".part", dir=staged_path
             )
             os.close(fd)
+            # pathlib.Path.copy was added in Python 3.14, while this plugin
+            # supports Python 3.11 and newer.
             shutil.copyfile(self.get_cache_asset_path(asset), tmp_stage_path)
             os.replace(tmp_stage_path, staged_path / asset)
 
