@@ -1,9 +1,7 @@
 [project]
 name = "snakemake-software-deployment-plugin-conda"
 version = "0.8.3"
-authors = [
-    { name = "Johannes Köster", email = "johannes.koester@uni-due.de" },
-]
+authors = [{ name = "Johannes Köster", email = "johannes.koester@uni-due.de" }]
 description = "Software deployment plugin for Snakemake using rattler to deploy conda packages."
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
@@ -35,7 +33,11 @@ platforms = ["osx-arm64", "linux-64"]
 
 [tool.pixi.environments]
 dev = { features = ["dev"] }
+dev-minpy = { features = ["minpy", "dev"] }
 publish = { features = ["publish"] }
+
+[tool.pixi.feature.minpy.dependencies]
+python = "==3.11"
 
 [tool.pixi.feature.dev.pypi-dependencies]
 pytest = ">=8.3.5,<9"
@@ -46,11 +48,11 @@ snakemake-software-deployment-plugin-container = ">=0.7.1,<1.0"
 #snakemake-software-deployment-plugin-container = { path = "../snakemake-software-deployment-plugin-container", editable = true }
 
 [tool.pixi.feature.dev.tasks]
-format = "ruff format"
-lint = "ruff check"
-typecheck = "pyrefly check"
+format = { cmd = "ruff format", default-environment = "dev" }
+lint = { cmd = "ruff check", default-environment = "dev" }
+typecheck = { cmd = "pyrefly check", default-environment = "dev" }
 qc = { depends-on = ["format", "lint"] }
-coverage-report = "coverage report -m"
+coverage-report = { cmd = "coverage report -m", default-environment = "dev" }
 
 [tool.pixi.feature.dev.tasks.test]
 cmd = [
@@ -58,14 +60,12 @@ cmd = [
   "--cov=snakemake_software_deployment_plugin_conda",
   "--cov-report=xml:coverage-report/coverage.xml",
   "--cov-report=term-missing",
-  "tests/test_plugin.py"
+  "tests/test_plugin.py",
 ]
+default-environment = "dev"
 
 [tool.coverage.report]
-exclude_lines = [
-  "pass",
-  "\\.\\.\\.",
-]
+exclude_lines = ["pass", "\\.\\.\\."]
 fail_under = 68.0
 
 # Publish
@@ -74,7 +74,7 @@ twine = ">=7.0.0,<8"
 build = ">=1.2.2,<2"
 
 [tool.pixi.feature.publish.tasks]
-build = { cmd = "python -m build", description = "Build the package into the dist/ directory" }
+build = { cmd = "python -m build", description = "Build the package into the dist/ directory", default-environment = "publish" }
 check-build = { cmd = "python -m twine check dist/*", depends-on = [
   "build",
-], description = "Check that the package can be uploaded" }
+], description = "Check that the package can be uploaded", default-environment = "publish" }

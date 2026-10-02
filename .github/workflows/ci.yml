@@ -36,6 +36,10 @@ jobs:
 
   testing:
     runs-on: ubuntu-latest
+    # test on minimum python and latest
+    strategy:
+      matrix:
+        devenv: [dev-minpy, dev]
     # only run if commit message does not start with "chore(main): release"
     if: >-
       !startsWith(github.event.head_commit.message, 'chore(main): release')
@@ -45,7 +49,7 @@ jobs:
       - name: Setup pixi
         uses: prefix-dev/setup-pixi@v0
         with:
-          environments: dev
+          environments: ${{ matrix.devenv }}
 
       - uses: conda-incubator/setup-miniconda@v3
         with:
@@ -67,7 +71,8 @@ jobs:
         env:
           TEST_NAMED_ENV: "1"
           TEST_DIRECTORY_ENV: "1"
-        run: pixi run test -v
+        run: pixi run -e ${{ matrix.devenv }} test -v
 
       - name: Run Coverage
+        if: matrix.devenv == 'dev'
         run: pixi run coverage-report
