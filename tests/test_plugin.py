@@ -1,37 +1,35 @@
-from collections.abc import Set
 import asyncio
 import os
 import shutil
-from pathlib import Path
-from typing import Optional, Type
 import subprocess as sp
+from pathlib import Path
 
 import httpx
 import pytest
 from rattler import PackageRecord
 from rattler.package import BuildString
 from rattler.repo_data import RepoDataRecord
-from snakemake_interface_software_deployment_plugins.tests import (
-    TestSoftwareDeploymentBase,
-    ShellExecutable,
-)
 from snakemake_interface_software_deployment_plugins import (
-    EnvSpecBase,
     EnvBase,
+    EnvSpecBase,
     EnvSpecSourceFile,
 )
 from snakemake_interface_software_deployment_plugins.settings import (
     SoftwareDeploymentSettingsBase,
 )
+from snakemake_interface_software_deployment_plugins.tests import (
+    ShellExecutable,
+    TestSoftwareDeploymentBase,
+)
+from snakemake_software_deployment_plugin_container import Env as ContainerEnv
+from snakemake_software_deployment_plugin_container import EnvSpec as ContainerEnvSpec
+from snakemake_software_deployment_plugin_container import Runtime
+from snakemake_software_deployment_plugin_container import Settings as ContainerSettings
+
 from snakemake_software_deployment_plugin_conda import (
     Env,
     EnvSpec,
 )
-from snakemake_software_deployment_plugin_container import Env as ContainerEnv
-from snakemake_software_deployment_plugin_container import EnvSpec as ContainerEnvSpec
-from snakemake_software_deployment_plugin_container import Settings as ContainerSettings
-from snakemake_software_deployment_plugin_container import Runtime
-
 
 sp.run(["pixi", "run", "-e", "publish", "check-build"], check=True)
 DIST_DIR = (Path(__file__).parent.parent / "dist").absolute()
@@ -54,17 +52,17 @@ class Test(TestSoftwareDeploymentBase):
             envfile=EnvSpecSourceFile(Path(__file__).parent / "test_env.yaml")
         )
 
-    def get_env_cls(self) -> Type[EnvBase]:
+    def get_env_cls(self) -> type[EnvBase]:
         # Return the environment class that should be tested.
         return Env
 
-    def get_settings_cls(self) -> Optional[Type[SoftwareDeploymentSettingsBase]]:
+    def get_settings_cls(self) -> type[SoftwareDeploymentSettingsBase] | None:
         # Return the settings class that should be used for this plugin.
         return None
 
     def get_settings(
         self,
-    ) -> Optional[SoftwareDeploymentSettingsBase]:
+    ) -> SoftwareDeploymentSettingsBase | None:
         # If your plugin has settings, return a valid settings object here.
         # Otherwise, return None.
         return None
@@ -120,17 +118,17 @@ class TestWithinContainer(Test):
     # Do not use login shell here, we don't need an external conda but rather the udocker installed by pixi.
     shell_executable = ShellExecutable("bash", args=[], command_arg="-c")
 
-    def get_within_cls(self) -> Optional[Type[EnvBase]]:
+    def get_within_cls(self) -> type[EnvBase] | None:
         return ContainerEnv
 
-    def get_within_spec(self) -> Optional[EnvSpecBase]:
+    def get_within_spec(self) -> EnvSpecBase | None:
         return ContainerEnvSpec("condaforge/miniforge3:26.1.0-0")
 
-    def get_within_settings(self) -> Optional[SoftwareDeploymentSettingsBase]:
+    def get_within_settings(self) -> SoftwareDeploymentSettingsBase | None:
         dist_dir = DIST_DIR.as_posix()
         return ContainerSettings(mountpoints=[f"{dist_dir}:{dist_dir}"])
 
-    def get_envvars(self) -> Set[str]:
+    def get_envvars(self) -> set[str]:
         return {"PIP_FIND_LINKS"}
 
 
@@ -176,17 +174,17 @@ class TestPypiWithinContainer(TestPypi):
     # Do not use login shell here, we don't need an external conda but rather the udocker installed by pixi.
     shell_executable = ShellExecutable("bash", args=[], command_arg="-c")
 
-    def get_within_cls(self) -> Optional[Type[EnvBase]]:
+    def get_within_cls(self) -> type[EnvBase] | None:
         return ContainerEnv
 
-    def get_within_spec(self) -> Optional[EnvSpecBase]:
+    def get_within_spec(self) -> EnvSpecBase | None:
         return ContainerEnvSpec("condaforge/miniforge3:26.1.0-0")
 
-    def get_within_settings(self) -> Optional[SoftwareDeploymentSettingsBase]:
+    def get_within_settings(self) -> SoftwareDeploymentSettingsBase | None:
         dist_dir = DIST_DIR.as_posix()
         return ContainerSettings(mountpoints=[f"{dist_dir}:{dist_dir}"])
 
-    def get_envvars(self) -> Set[str]:
+    def get_envvars(self) -> set[str]:
         return {"PIP_FIND_LINKS"}
 
 
