@@ -1,43 +1,43 @@
-import subprocess
-import inspect
-import tempfile
 import copy
 import importlib.metadata
-from itertools import chain
+import inspect
 import json
 import os
 import pickle
-import shutil
-import sys
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
-import subprocess as sp
 import shlex
+import shutil
+import subprocess
+import subprocess as sp
+import sys
+import tempfile
+from collections.abc import Iterable
+from dataclasses import dataclass
+from itertools import chain
+from pathlib import Path
+from typing import Any
 
+import aiofiles
 import httpx
 import yaml
-import aiofiles
-
+from rattler import VirtualPackage, install, solve
+from rattler.match_spec import MatchSpec
+from rattler.platform import Platform
+from rattler.repo_data import Gateway, RepoDataRecord
+from rattler.shell import ActivationVariables, Shell, activate
 from snakemake_interface_common.exceptions import WorkflowError
+from snakemake_interface_software_deployment_plugins import (
+    CacheableEnvBase,
+    DeployableEnvBase,
+    EnvBase,
+    EnvSpecBase,
+    EnvSpecSourceFile,
+    PinnableEnvBase,
+    SoftwareReport,
+)
 from snakemake_interface_software_deployment_plugins.settings import (
     CommonSettings,
 )
-from snakemake_interface_software_deployment_plugins import (
-    EnvBase,
-    DeployableEnvBase,
-    CacheableEnvBase,
-    PinnableEnvBase,
-    EnvSpecBase,
-    SoftwareReport,
-    EnvSpecSourceFile,
-)
 
-from rattler.shell import Shell, activate, ActivationVariables
-from rattler.match_spec import MatchSpec
-from rattler import solve, install, VirtualPackage
-from rattler.platform import Platform
-from rattler.repo_data import RepoDataRecord, Gateway
 from snakemake_software_deployment_plugin_conda.pinfiles import (
     get_match_specs_from_conda_pinfile,
 )
@@ -56,11 +56,11 @@ common_settings = CommonSettings(
 
 @dataclass(eq=False)
 class EnvSpec(EnvSpecBase):
-    envfile: Optional[EnvSpecSourceFile] = None
-    directory: Optional[Path] = None
-    name: Optional[str] = None
-    pinfile: Optional[EnvSpecSourceFile] = None
-    post_deploy_script: Optional[EnvSpecSourceFile] = None
+    envfile: EnvSpecSourceFile | None = None
+    directory: Path | None = None
+    name: str | None = None
+    pinfile: EnvSpecSourceFile | None = None
+    post_deploy_script: EnvSpecSourceFile | None = None
 
     def __post_init__(self):
         if sum(x is not None for x in (self.envfile, self.name, self.directory)) != 1:
@@ -109,17 +109,17 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
     # futher stuff.
 
     def __post_init__(self):
-        self._package_records_cache: Optional[List[RepoDataRecord]] = None
+        self._package_records_cache: list[RepoDataRecord] | None = None
         self._envfile_content = None
         self._cache_assets = None
         self._containerized_path = None
 
     @property
-    def containerized_path(self) -> Optional[Path]:
+    def containerized_path(self) -> Path | None:
         return self._containerized_path
 
     @containerized_path.setter
-    def containerized_path(self, value: Optional[Path]) -> None:
+    def containerized_path(self, value: Path | None) -> None:
         self._containerized_path = value
         self.clear_hashes()
 
@@ -151,7 +151,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             )
 
     @EnvBase.once
-    def conda_env_directories(self) -> List[Path]:
+    def conda_env_directories(self) -> list[Path]:
         errors = {}
         success = False
         dirs = []
@@ -168,7 +168,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 continue
             try:
                 info = json.loads(output.stdout)
-            except Exception as e:
+            except json.JSONDecodeError as e:
                 errors[client] = f"Failed to parse {client} info output: {e}"
                 continue
 
@@ -210,18 +210,18 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 raise WorkflowError(f"Could not find environment {self.spec.name}")
 
     @property
-    def envfile_content(self) -> Dict[str, list]:
+    def envfile_content(self) -> dict[str, list]:
         if self._envfile_content is None:
             assert self.spec.envfile is not None
             assert self.spec.envfile.cached is not None
             try:
                 with open(self.spec.envfile.cached, "r") as f:
                     self._envfile_content = yaml.load(f, Loader=yaml.SafeLoader)
-            except Exception as e:
+            except (OSError, yaml.YAMLError) as e:
                 raise WorkflowError(
                     f"Could not read envfile {self.spec.envfile.path_or_uri}",
                     e,
-                )
+                ) from e
         return self._envfile_content
 
     def decorate_shellcmd(self, cmd: str) -> str:
@@ -289,7 +289,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             return ()
 
     @property
-    def conda_specs(self) -> List[str]:
+    def conda_specs(self) -> list[str]:
         return [
             spec
             for spec in self.envfile_content["dependencies"]
@@ -297,7 +297,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
         ]
 
     @property
-    def pypi_specs(self) -> List[str]:
+    def pypi_specs(self) -> list[str]:
         for spec in self.envfile_content["dependencies"]:
             if isinstance(spec, dict):
                 pypi_specs = spec["pip"]
@@ -306,7 +306,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 return spec["pip"]
         return []
 
-    def _platforms(self) -> List[Platform]:
+    def _platforms(self) -> list[Platform]:
         if self.within is not None:
             return [
                 Platform(name)
@@ -317,7 +317,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
 
         return [Platform.current(), Platform("noarch")]
 
-    def channels(self, platforms: List[Platform]) -> List[str]:
+    def channels(self, platforms: list[Platform]) -> list[str]:
         is_win = any(p.is_windows for p in platforms)
         channels = self.envfile_content.get("channels", [])
         try:
@@ -332,7 +332,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             pass
         return channels
 
-    async def _package_records(self) -> List[RepoDataRecord]:
+    async def _package_records(self) -> list[RepoDataRecord]:
         if self._package_records_cache is None:
             assert isinstance(self.spec, EnvSpec)
             assert self.spec.pinfile is not None
@@ -413,7 +413,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                     await f.write(chunk)
 
     def _run_method(
-        self, name: str, *args: Any, mod_pattern: Optional[str] = None, **kwargs: Any
+        self, name: str, *args: Any, mod_pattern: str | None = None, **kwargs: Any
     ) -> Any:
         assert self.within is not None
         # invoke this within the given environment
@@ -554,7 +554,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                     f"{self.spec.post_deploy_script.path_or_uri}: {e.stdout.decode()}"
                 )
 
-    def _deploy_pypi_specs(self, pypi_specs: List[str]) -> None:
+    def _deploy_pypi_specs(self, pypi_specs: list[str]) -> None:
         if self.within is not None:
             return self._run_method("_deploy_pypi_specs", pypi_specs)
 
@@ -584,8 +584,7 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                     *pypi_specs,
                 ],
                 check=True,
-                stdout=sp.PIPE,
-                stderr=sp.PIPE,
+                capture_output=True,
             )
         except sp.CalledProcessError as e:
             raise WorkflowError(f"Failed to install pypi packages: {e.stderr}", e)
