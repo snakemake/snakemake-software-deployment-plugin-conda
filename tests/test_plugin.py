@@ -9,6 +9,7 @@ import subprocess as sp
 import httpx
 import pytest
 from rattler import PackageRecord
+from rattler.package import BuildString
 from rattler.repo_data import RepoDataRecord
 from snakemake_interface_software_deployment_plugins.tests import (
     TestSoftwareDeploymentBase,
@@ -219,7 +220,7 @@ def _repo_data_record() -> RepoDataRecord:
         PackageRecord(
             name="fixture",
             version="1.0",
-            build="0",
+            build=BuildString("0"),
             build_number=0,
             subdir="noarch",
         ),
