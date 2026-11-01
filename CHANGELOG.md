@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.5](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.8.4...v0.8.5) (2026-11-01)
+
+
+### Bug Fixes
+
+* bump rattler and uv dependencies to latest stable versions ([#46](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/issues/46)) ([f33f191](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/f33f19140d99ef35ea8c947feb15ac6887941b1d))
+
 ## [0.8.4](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.8.3...v0.8.4) (2026-10-02)
 
 
