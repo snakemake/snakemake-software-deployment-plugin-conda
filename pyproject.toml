@@ -6,13 +6,13 @@ description = "Software deployment plugin for Snakemake using rattler to deploy 
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
 dependencies = [
-    "snakemake-interface-common (>=1.23.1,<2.0.0)",
-    "snakemake-interface-software-deployment-plugins (>=0.21.2,<1.0)",
-    "py-rattler (>=0.23.0,<0.27.0)",
-    "pyyaml (>=6.0.2,<7.0.0)",
-    "uv (>=0.6.5,<0.12.0)",
-    "aiofiles (>=24.1.0,<26)",
-    "httpx[socks] (>=0.28.1,<0.29)",
+    "snakemake-interface-common>=1.23.1,<2",
+    "snakemake-interface-software-deployment-plugins>=0.21.2,<0.22",
+    "py-rattler>=0.28.1,<0.29",
+    "pyyaml>=6.0.3,<7",
+    "uv>=0.13.6,<0.14",
+    "aiofiles>=25.1.0,<26",
+    "httpx[socks]>=0.28.1,<0.29",
 ]
 
 [tool.pixi.pypi-dependencies]
@@ -40,11 +40,11 @@ publish = { features = ["publish"] }
 python = "==3.11"
 
 [tool.pixi.feature.dev.pypi-dependencies]
-pytest = ">=8.3.5,<9"
-ruff = ">=0.10.0,<0.11"
-pytest-cov = ">=6.0.0,<7"
-pyrefly = ">=0.52.0,<0.53"
-snakemake-software-deployment-plugin-container = ">=0.7.1,<1.0"
+pytest = ">=9.2.0, <10"
+ruff = ">=0.17.3, <0.18"
+pytest-cov = ">=7.1.0, <8"
+pyrefly = ">=1.4.0, <2"
+snakemake-software-deployment-plugin-container = ">=0.7.5, <0.8"
 #snakemake-software-deployment-plugin-container = { path = "../snakemake-software-deployment-plugin-container", editable = true }
 
 [tool.pixi.feature.dev.tasks]
@@ -70,8 +70,8 @@ fail_under = 68.0
 
 # Publish
 [tool.pixi.feature.publish.pypi-dependencies]
-twine = ">=7.0.0,<8"
-build = ">=1.2.2,<2"
+twine = ">=7.0.0, <8"
+build = ">=1.6.1, <2"
 
 [tool.pixi.feature.publish.tasks]
 build = { cmd = "python -m build", description = "Build the package into the dist/ directory", default-environment = "publish" }
