@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.6](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.8.5...v0.8.6) (2026-11-02)
+
+
+### Bug Fixes
+
+* allow py-rattler 0.27 as well ([5657083](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/5657083dcaac9abca8042e502f9f689d1203be67))
+
 ## [0.8.5](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.8.4...v0.8.5) (2026-11-01)
 
 
