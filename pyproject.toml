@@ -8,7 +8,7 @@ requires-python = ">=3.11,<4.0"
 dependencies = [
     "snakemake-interface-common>=1.23.1,<2",
     "snakemake-interface-software-deployment-plugins>=0.21.2,<0.22",
-    "py-rattler>=0.28.1,<0.29",
+    "py-rattler>=0.27.0,<0.29",
     "pyyaml>=6.0.3,<7",
     "uv>=0.13.6,<0.14",
     "aiofiles>=25.1.0,<26",
