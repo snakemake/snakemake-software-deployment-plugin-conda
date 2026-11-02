@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.7](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.8.6...v0.8.7) (2026-11-02)
+
+
+### Miscellaneous Chores
+
+* 0.8.7 ([cdb8440](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/commit/cdb8440762329b116f4554ed6a0b46757c45656b))
+
 ## [0.8.6](https://github.com/snakemake/snakemake-software-deployment-plugin-conda/compare/v0.8.5...v0.8.6) (2026-11-02)
 
 
