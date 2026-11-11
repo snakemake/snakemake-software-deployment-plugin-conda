@@ -113,6 +113,66 @@ class TestPypi(Test):
         return "which python; python -c 'import humanfriendly'"
 
 
+class TestPypiRequirementsTxt(Test):
+    __test__ = True
+
+    def get_contained_executable(self) -> str:
+        return "python"
+
+    def get_env_spec(self) -> EnvSpecBase:
+        return EnvSpec(
+            envfile=EnvSpecSourceFile(
+                Path(__file__).parent / "test_env_requirements.yaml"
+            )
+        )
+
+    def get_test_cmd(self) -> str:
+        return (
+            "python -c 'import numpy as np; "
+            'np.savetxt("test.out", np.arange(5), fmt="%d")\''
+        )
+
+
+class TestPypiRequirementsTxtFull(Test):
+    __test__ = True
+
+    def get_contained_executable(self) -> str:
+        return "python"
+
+    def get_env_spec(self) -> EnvSpecBase:
+        return EnvSpec(
+            envfile=EnvSpecSourceFile(
+                Path(__file__).parent / "test_env_requirements_full.yaml"
+            )
+        )
+
+    def get_test_cmd(self) -> str:
+        return (
+            "python -c 'import numpy as np; "
+            'np.savetxt("test.out", np.arange(5), fmt="%d")\''
+        )
+
+
+class TestPypiRequirementsTxtNested(Test):
+    __test__ = True
+
+    def get_contained_executable(self) -> str:
+        return "python"
+
+    def get_env_spec(self) -> EnvSpecBase:
+        return EnvSpec(
+            envfile=EnvSpecSourceFile(
+                Path(__file__).parent / "test_env_requirements_nested.yaml"
+            )
+        )
+
+    def get_test_cmd(self) -> str:
+        return (
+            "python -c 'import numpy as np; "
+            'np.savetxt("test.out", np.arange(5), fmt="%d")\''
+        )
+
+
 class TestWithinContainer(Test):
     __test__ = True
     # Do not use login shell here, we don't need an external conda but rather the udocker installed by pixi.
