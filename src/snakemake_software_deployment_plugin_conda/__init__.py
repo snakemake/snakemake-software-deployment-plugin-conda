@@ -251,6 +251,10 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
             hash_object.update(
                 json.dumps(self.envfile_content, sort_keys=True).encode()
             )
+            for requirement_file in self.requirement_files():
+                content = requirement_file.read_bytes()
+                hash_object.update(len(content).to_bytes(8, byteorder="big"))
+                hash_object.update(content)
             for aux_file in (
                 self.spec.post_deploy_script.cached,
                 self.spec.pinfile.cached,
@@ -283,7 +287,12 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                     version=entry.version,
                 )
 
-            return list(map(entry_to_report, chain(self.conda_specs, self.pypi_specs)))
+            pypi_specs = (
+                spec
+                for spec in self.pypi_specs
+                if self.requirement_file_from_spec(spec) is None
+            )
+            return list(map(entry_to_report, chain(self.conda_specs, pypi_specs)))
         else:
             # TODD dynamically obtain software list from the deployed environment
             return ()
@@ -305,6 +314,79 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                     raise WorkflowError("pypi/pip dependencies must be a list")
                 return spec["pip"]
         return []
+
+    @staticmethod
+    def requirement_file_from_spec(spec: str) -> str | None:
+        spec = spec.strip()
+        if spec.startswith("--requirement="):
+            return spec.removeprefix("--requirement=").strip()
+        if spec.startswith("--requirement "):
+            return spec.removeprefix("--requirement ").strip()
+        if spec.startswith("-r "):
+            return spec.removeprefix("-r ").strip()
+        if len(spec) > 2 and spec.startswith("-r"):
+            return spec[2:].strip()
+        return None
+
+    def requirement_files(self) -> list[Path]:
+        assert self.spec.envfile is not None
+        envfile = Path(self.spec.envfile.path_or_uri)
+        if not envfile.is_file():
+            raise WorkflowError(
+                "Pip requirements files are only supported for local environment "
+                f"files: {self.spec.envfile.path_or_uri}"
+            )
+
+        files = []
+        visited = set()
+
+        def visit(requirement_file: Path) -> None:
+            requirement_file = requirement_file.resolve()
+            if requirement_file in visited:
+                return
+            visited.add(requirement_file)
+            try:
+                content = requirement_file.read_text()
+            except OSError as e:
+                raise WorkflowError(
+                    f"Could not read pip requirements file {requirement_file}", e
+                ) from e
+
+            files.append(requirement_file)
+            for line in content.splitlines():
+                nested_requirement = self.requirement_file_from_spec(line)
+                if nested_requirement is not None:
+                    visit(requirement_file.parent / nested_requirement)
+
+        for spec in self.pypi_specs:
+            requirement = self.requirement_file_from_spec(spec)
+            if requirement is not None:
+                visit(envfile.parent / requirement)
+
+        return files
+
+    def pypi_install_args(self) -> list[str]:
+        assert self.spec.envfile is not None
+        envfile = Path(self.spec.envfile.path_or_uri)
+        if not envfile.is_file() and any(
+            self.requirement_file_from_spec(spec) is not None
+            for spec in self.pypi_specs
+        ):
+            raise WorkflowError(
+                "Pip requirements files are only supported for local environment "
+                f"files: {self.spec.envfile.path_or_uri}"
+            )
+
+        args = []
+        for spec in self.pypi_specs:
+            requirement = self.requirement_file_from_spec(spec)
+            if requirement is None:
+                args.append(spec.replace(" ", ""))
+            else:
+                args.extend(
+                    ["--requirement", str((envfile.parent / requirement).resolve())]
+                )
+        return args
 
     def _platforms(self) -> list[Platform]:
         if self.within is not None:
@@ -535,9 +617,9 @@ class Env(PinnableEnvBase, CacheableEnvBase, DeployableEnvBase, EnvBase):
                 # counterparts are all present
                 (staged_path / asset).unlink()
 
-        pypi_specs = [spec.replace(" ", "") for spec in self.pypi_specs]
-        if pypi_specs:
-            self._deploy_pypi_specs(pypi_specs)
+        pypi_install_args = self.pypi_install_args()
+        if pypi_install_args:
+            self._deploy_pypi_specs(pypi_install_args)
 
         if self.spec.post_deploy_script.cached.exists():
             # run post deploy script with activated env
